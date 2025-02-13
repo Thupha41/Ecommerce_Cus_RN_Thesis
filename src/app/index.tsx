@@ -6,6 +6,8 @@ import { useCurrentApp } from "@/context/app.context";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { APP_FONT } from "@/utils/constants";
+import { View, Text } from "react-native";
+import React from "react";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -24,10 +26,10 @@ const RootPage = () => {
         // Pre-load fonts, make any API calls you need to do here
         const res = await getAccountAPI();
 
-        if (res.data) {
+        if (res.result) {
           //success
           setAppState({
-            user: res.data.user,
+            user: res.result.user,
             access_token: await AsyncStorage.getItem("access_token"),
           });
           router.replace("/(tabs)");

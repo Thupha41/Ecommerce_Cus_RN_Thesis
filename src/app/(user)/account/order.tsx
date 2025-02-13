@@ -15,7 +15,7 @@ const OrderPage = () => {
   useEffect(() => {
     const fetchOrderHistory = async () => {
       const res = await getOrderHistoryAPI();
-      if (res.data) setOrderHistory(res.data);
+      if (res.result) setOrderHistory(res.result);
     };
     fetchOrderHistory();
   }, []);
