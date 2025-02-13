@@ -4,8 +4,28 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import Octicons from "@expo/vector-icons/Octicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { APP_COLOR } from "@/utils/constants";
+import React, { useState, useEffect } from "react";
+import { Keyboard, Platform } from "react-native";
 
 const TabLayout = () => {
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => setKeyboardVisible(true)
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
+
   const getIcons = (routeName: string, focused: boolean, size: number) => {
     if (routeName === "index") {
       return (
@@ -16,10 +36,19 @@ const TabLayout = () => {
         />
       );
     }
-    if (routeName === "order") {
+    // if (routeName === "order") {
+    //   return (
+    //     <MaterialIcons
+    //       name="list-alt"
+    //       size={size}
+    //       color={focused ? APP_COLOR.ORANGE : APP_COLOR.GREY}
+    //     />
+    //   );
+    // }
+    if (routeName === "ai-chat") {
       return (
-        <MaterialIcons
-          name="list-alt"
+        <MaterialCommunityIcons
+          name="chat-processing"
           size={size}
           color={focused ? APP_COLOR.ORANGE : APP_COLOR.GREY}
         />
@@ -70,6 +99,17 @@ const TabLayout = () => {
         headerShown: false,
         tabBarLabelStyle: { paddingBottom: 3 },
         tabBarActiveTintColor: APP_COLOR.ORANGE,
+        tabBarStyle: {
+          display: isKeyboardVisible ? "none" : "flex",
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          elevation: 0,
+          backgroundColor: "white",
+          height: 60,
+          zIndex: 1000,
+        },
       })}
       // sceneContainerStyle={{ backgroundColor: "#fff" }}
     >
@@ -79,16 +119,22 @@ const TabLayout = () => {
           title: "Home",
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="order"
         options={{
           title: "Đơn hàng",
         }}
-      />
+      /> */}
       <Tabs.Screen
         name="favorite"
         options={{
           title: "Đã thích",
+        }}
+      />
+      <Tabs.Screen
+        name="ai-chat"
+        options={{
+          title: "AI chat",
         }}
       />
       <Tabs.Screen
