@@ -2,6 +2,7 @@ import {
   currencyFormatter,
   getOrderHistoryAPI,
   getURLBaseBackend,
+  chatWithAI,
 } from "@/utils/api";
 import { APP_COLOR } from "@/utils/constants";
 import { useEffect, useState } from "react";
@@ -38,6 +39,8 @@ const AIChatPage = () => {
   ]);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [inputText, setInputText] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
@@ -54,13 +57,6 @@ const AIChatPage = () => {
       keyboardWillHide.remove();
     };
   }, []);
-
-  const suggestedQuestions = [
-    "Làm sao để giải trí sau một ngày làm việc căng thẳng?",
-    "Làm sao để cải thiện chất lượng không khí trong nhà?",
-    "Tôi muốn tìm hiểu về lịch sử thế giới",
-    "Nên bắt đầu học guitar như thế nào?",
-  ];
 
   const takePicture = async () => {
     // Request camera permissions using the new API
@@ -145,6 +141,84 @@ const AIChatPage = () => {
       console.error("Error picking document:", error);
       alert("Failed to pick document");
     }
+  };
+
+  const LoadingDots = () => {
+    const [dots, setDots] = useState("");
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setDots((prev) => (prev.length >= 3 ? "" : prev + "."));
+      }, 500);
+
+      return () => clearInterval(interval);
+    }, []);
+
+    return (
+      <View style={{ flexDirection: "row", marginBottom: 10 }}>
+        <Image
+          source={require("@/assets/ai-avatar.png")}
+          style={{
+            width: 30,
+            height: 30,
+            marginRight: 8,
+          }}
+        />
+        <View
+          style={{
+            backgroundColor: "#f0f2ff",
+            padding: 12,
+            borderRadius: 16,
+            borderBottomLeftRadius: 4,
+          }}
+        >
+          <Text style={{ color: "#000", fontSize: 16 }}>
+            {`Đang nhập${dots}`}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputText.trim()) return;
+
+    // Add user message to chat
+    setMessages((prev) => [
+      ...prev,
+      {
+        type: "text",
+        content: inputText,
+        sender: "user",
+      },
+    ]);
+
+    setIsLoading(true); // Show loading animation
+
+    try {
+      // Call API with default values for user_id and session_id
+      const response = await chatWithAI("1", "1", inputText);
+
+      // Add AI response to chat
+      if (response.data?.response) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: "text",
+            content: response.data.response,
+            sender: "ai",
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      // Optionally show error message to user
+    } finally {
+      setIsLoading(false); // Hide loading animation
+    }
+
+    // Clear input
+    setInputText("");
   };
 
   const renderOptionsModal = () => (
@@ -245,7 +319,7 @@ const AIChatPage = () => {
       <View
         style={{
           flex: 1,
-          paddingBottom: isKeyboardVisible ? 0 : 60, // Add padding when keyboard is not visible
+          paddingBottom: isKeyboardVisible ? 0 : 60,
         }}
       >
         {/* Header */}
@@ -265,47 +339,54 @@ const AIChatPage = () => {
           <Text style={{ fontSize: 18, fontWeight: "500" }}>Trợ lý AI</Text>
         </View>
 
-        {/* Chat Area */}
+        {/* AI Chat Area */}
         <ScrollView style={{ flex: 1, padding: 15 }}>
           {messages.map((msg, index) => (
             <View
               key={index}
               style={{
-                backgroundColor: "#f0f2ff",
-                padding: 15,
-                borderRadius: 12,
-                marginBottom: 10,
+                flexDirection: "row",
+                justifyContent:
+                  msg.sender === "user" ? "flex-end" : "flex-start",
+                marginBottom: 30,
+                alignItems: "flex-start",
               }}
             >
-              <Text>{msg.content}</Text>
-            </View>
-          ))}
+              {msg.sender === "ai" && (
+                <Image
+                  source={require("@/assets/ai-avatar.png")}
+                  style={{
+                    width: 30,
+                    height: 30,
+                    marginRight: 8,
+                  }}
+                />
+              )}
 
-          {/* Suggested Questions */}
-          {suggestedQuestions.map((question, index) => (
-            <TouchableOpacity
-              key={index}
-              style={{
-                borderWidth: 1,
-                borderColor: "#ddd",
-                padding: 15,
-                borderRadius: 8,
-                marginBottom: 10,
-              }}
-            >
-              <Text>{question}</Text>
-              <Text
+              <View
                 style={{
-                  color: "#0066FF",
-                  position: "absolute",
-                  right: 10,
-                  top: 15,
+                  maxWidth: "70%",
+                  backgroundColor:
+                    msg.sender === "user" ? APP_COLOR.ORANGE : "#f0f2ff",
+                  padding: 12,
+                  borderRadius: 16,
+                  borderBottomRightRadius: msg.sender === "user" ? 4 : 16,
+                  borderBottomLeftRadius: msg.sender === "ai" ? 4 : 16,
                 }}
               >
-                ▶
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={{
+                    color: msg.sender === "user" ? "#fff" : "#000",
+                    fontSize: 16,
+                    lineHeight: 24,
+                  }}
+                >
+                  {msg.content}
+                </Text>
+              </View>
+            </View>
           ))}
+          {isLoading && <LoadingDots />}
         </ScrollView>
 
         {/* Input Area */}
@@ -330,6 +411,8 @@ const AIChatPage = () => {
           </TouchableOpacity>
 
           <TextInput
+            value={inputText}
+            onChangeText={setInputText}
             placeholder="Nhập nội dung chat"
             style={{
               flex: 1,
@@ -338,7 +421,10 @@ const AIChatPage = () => {
               borderRadius: 20,
             }}
           />
-          <TouchableOpacity style={{ marginLeft: 10 }}>
+          <TouchableOpacity
+            style={{ marginLeft: 10 }}
+            onPress={handleSendMessage}
+          >
             <MaterialIcons name="send" size={24} color={APP_COLOR.ORANGE} />
           </TouchableOpacity>
         </View>
