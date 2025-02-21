@@ -25,11 +25,11 @@ const RootPage = () => {
       try {
         // Pre-load fonts, make any API calls you need to do here
         const res = await getAccountAPI();
-
+        console.log(">>> check get me result", res.result);
         if (res.result) {
           //success
           setAppState({
-            user: res.result.user,
+            user: res.result,
             access_token: await AsyncStorage.getItem("access_token"),
           });
           router.replace("/(tabs)");
