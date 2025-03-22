@@ -15,6 +15,7 @@ import { useCurrentApp } from "@/context/app.context";
 import { likeRestaurantAPI } from "@/utils/api";
 import Toast from "react-native-root-toast";
 import { useEffect, useState } from "react";
+import { Feather, Entypo } from "@expo/vector-icons";
 
 const AnimatedMaterialIcons = Animated.createAnimatedComponent(MaterialIcons);
 const { height: sHeight, width: sWidth } = Dimensions.get("window");
@@ -55,7 +56,7 @@ const StickyHeader = (props: IProps) => {
       //lấy phủ định
       const quantity = like === true ? -1 : 1;
       const res = await likeRestaurantAPI(restaurant?._id, quantity);
-      if (res.data) {
+      if (res.result) {
         //success
         setLike(!like);
       } else {
@@ -120,7 +121,7 @@ const StickyHeader = (props: IProps) => {
           </Pressable>
           <Animated.View style={[{ flex: 1 }, animatedStickyHeaderStyle]}>
             <TextInput
-              placeholder={"Tìm món ăn tại cửa hàng..."}
+              placeholder={"Tìm sản phẩm tại shop..."}
               style={{
                 borderWidth: 1,
                 borderColor: APP_COLOR.GREY,
@@ -130,6 +131,59 @@ const StickyHeader = (props: IProps) => {
                 paddingVertical: Platform.OS === "android" ? 0 : 10,
               }}
             />
+          </Animated.View>
+
+          {/* Share Icons */}
+          <Animated.View
+            style={[animatedStickyHeaderStyle, styles.iconContainer]}
+          >
+            <Pressable
+              style={({ pressed }) => [
+                {
+                  opacity: pressed === true ? 0.5 : 1,
+                },
+              ]}
+              onPress={() => console.log("Share pressed")}
+            >
+              <Feather name="share" size={22} color="#333" />
+            </Pressable>
+          </Animated.View>
+
+          <Animated.View
+            style={[animatedStickyHeaderStyle, styles.iconContainer]}
+          >
+            <Pressable
+              style={({ pressed }) => [
+                {
+                  opacity: pressed === true ? 0.5 : 1,
+                },
+              ]}
+              onPress={() => console.log("Cart pressed")}
+            >
+              <Feather name="shopping-cart" size={22} color="#333" />
+              <View style={styles.badge}>
+                <Animated.Text
+                  style={[{ color: "white", fontSize: 10, fontWeight: "bold" }]}
+                >
+                  99+
+                </Animated.Text>
+              </View>
+            </Pressable>
+          </Animated.View>
+
+          <Animated.View
+            style={[animatedStickyHeaderStyle, styles.iconContainer]}
+          >
+            <Pressable
+              style={({ pressed }) => [
+                {
+                  opacity: pressed === true ? 0.5 : 1,
+                },
+              ]}
+              onPress={() => console.log("Menu pressed")}
+            >
+              <Feather name="menu" size={22} color="#333" />
+            </Pressable>
           </Animated.View>
         </View>
       </View>
@@ -171,5 +225,29 @@ const StickyHeader = (props: IProps) => {
     </>
   );
 };
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    height: 30,
+    width: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  badge: {
+    position: "absolute",
+    top: -8,
+    right: -10,
+    backgroundColor: APP_COLOR.ORANGE,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+    borderWidth: 1,
+    borderColor: "white",
+  },
+});
 
 export default StickyHeader;

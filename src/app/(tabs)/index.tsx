@@ -8,20 +8,20 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const data = [
   {
     key: 1,
-    name: "Top Quán Rating 5* tuần này",
-    description: "Gợi ý quán được tín đồ ẩm thực đánh giá 5*",
+    name: "Top Sản Phẩm Rating 5* tuần này",
+    description: "Gợi ý sản phẩm được đánh giá 5*",
     refAPI: "top-rating",
   },
   {
     key: 2,
-    name: "Quán Mới Lên Sàn",
-    description: "Khám phá ngay hàng loạt quán mới cực ngon",
+    name: "Sản phẩm Mới Lên Sàn",
+    description: "Khám phá ngay hàng loạt sản phẩm mới lên sàn",
     refAPI: "newcomer",
   },
   {
     key: 3,
-    name: "Ăn Thỏa Thích, Freeship 0Đ",
-    description: "Bánh ngọt, chân gà, bánh tráng trộn... Freeship.",
+    name: "Sản phẩm Đang Sale",
+    description: "Khám phá ngay hàng loạt sản phẩm đang được sale",
     refAPI: "top-freeship",
   },
 ];

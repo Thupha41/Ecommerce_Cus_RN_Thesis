@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "RN-foodapp-thupha",
-    "slug": "RN-foodapp-thupha",
+    "name": "RN-shoplaz-thupha",
+    "slug": "RN-shoplaz-thupha",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
