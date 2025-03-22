@@ -33,38 +33,30 @@ export const getAccountAPI = () => {
     return axios1.get<IBackendRes<IUserLogin>>(url);
 }
 
-export const chatWithAI = async (user_id: string, session_id: string, text: string, image?: string) => {
+export const chatWithAI = async (user_id: string, conversation_id: string, text: string) => {
     try {
-        // Use the device's network IP instead of localhost
         const url = Platform.OS === 'android' 
-            ? 'http://10.0.2.2:8082/chat/'  // Android emulator
-            : 'http://localhost:8082/chat/'; // iOS simulator
+            ? 'http://10.0.2.2:8082/chat/'
+            : 'http://localhost:8082/chat/';
             
-        // If using a physical device, use your computer's local IP address
-        // const url = 'http://192.168.1.xxx:8082/chat/'; // Replace with your computer's IP
-
         const formData = new FormData();
+        formData.append('conversation_id', conversation_id);
         formData.append('user_id', user_id);
-        formData.append('session_id', session_id);
         formData.append('text', text);
         
-        if (image) {
-            formData.append('image', image);
-        }
-
-        console.log('Sending request to:', url);
-        console.log('FormData:', formData);
+        // if (image) {
+        //     formData.append('image', image);
+        // }
 
         const response = await axios.post(url, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
-            timeout: 10000,
         });
 
         return response;
     } catch (error) {
-        console.log('Full error:', error);
+        console.error('Chat API Error:', error);
         throw error;
     }
 }
@@ -76,6 +68,11 @@ export const getTopRestaurant = (ref: string) => {
             delay: 1500
         }
     });
+}
+
+export const getTopProducts = (ref: string) => {
+    const url = `/api/v1/products/${ref}`;
+    return axios1.get<IBackendRes<ITopProducts[]>>(url);
 }
 
 export const printAsyncStorage = () => {
@@ -105,6 +102,18 @@ export const getRestaurantByIdAPI = (id: string) => {
     });
 }
 
+export const getProductByIdAPI = (id: string) => {
+    const url = `/api/v1/products/${id}`;
+    return axios1.get<IBackendRes<IProductDetail>>(url)
+        .then(response => {
+            return response;
+        })
+        .catch(error => {
+            console.error("API error:", error.response || error.message || error);
+            throw error;
+        });
+}
+
 export const processDataRestaurantMenu = (restaurant: IRestaurant | null) => {
     if (!restaurant) return [];
     return restaurant?.menu?.map((menu, index) => {
@@ -115,6 +124,41 @@ export const processDataRestaurantMenu = (restaurant: IRestaurant | null) => {
             data: menu.menuItem
         }
     })
+}
+
+export const processDataProductDetail = (product: IProductDetail | null) => {
+    if (!product) return [];
+    
+    // Create sections for SectionList
+    return [
+        {
+            title: "Description",
+            index: 0,
+            data: [{ 
+                id: "description", 
+                content: product.product_description 
+            }]
+        },
+        {
+            title: "Details",
+            index: 1,
+            data: [{ 
+                id: "details",
+                type: product.product_type,
+                brand: product.product_attributes?.brand,
+                size: product.product_attributes?.size,
+                material: product.product_attributes?.material
+            }]
+        },
+        {
+            title: "Reviews",
+            index: 2,
+            data: [{ 
+                id: "reviews",
+                rating: product.product_ratingsAverage || 4.5
+            }]
+        }
+    ];
 }
 
 export const currencyFormatter = (value: any) => {
@@ -188,3 +232,40 @@ export const filterRestaurantAPI = (query: string) => {
     const url = `/api/v1/restaurants?${query}`;
     return axios.get<IBackendRes<IModelPaginate<IRestaurant>>>(url);
 }
+
+// Get cart items for the current user
+export const getCartItemsAPI = (userId: string) => {
+    const url = `/api/v1/carts?userId=${userId}`;
+    return axios1.get<IBackendRes<ICartResponse>>(url);
+}
+
+// Add product to cart
+export const addProductToCartAPI = (productData: IAddToCart) => {
+    const url = `/api/v1/carts`;
+    return axios1.post<IBackendRes<ICartResponse>>(url, { productData });
+}
+
+// Update cart item quantity (increase)
+export const increaseCartItemQuantityAPI = (productId: string) => {
+    const url = `/api/v1/carts/increase/${productId}`;
+    return axios1.post<IBackendRes<ICartResponse>>(url);
+}
+
+// Update cart item quantity (decrease)
+export const decreaseCartItemQuantityAPI = (productId: string) => {
+    const url = `/api/v1/carts/decrease/${productId}`;
+    return axios1.post<IBackendRes<ICartResponse>>(url);
+}
+
+// Delete cart item
+export const deleteCartItemAPI = (productId: string) => {
+    const url = `/api/v1/carts`;
+    return axios1.delete<IBackendRes<ICartResponse>>(url, { 
+        data: {
+            productId,
+        },
+    });
+}
+
+
+

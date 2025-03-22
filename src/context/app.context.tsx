@@ -11,6 +11,9 @@ interface AppContextType {
 
   restaurant: IRestaurant | null;
   setRestaurant: (v: any) => void;
+
+  productDetail: IProductDetail | null;
+  setProductDetail: (v: any) => void;
 }
 const AppContext = createContext<AppContextType | null>(null);
 
@@ -24,6 +27,9 @@ const AppProvider = (props: IProps) => {
 
   const [cart, setCart] = useState<ICart | Record<string, never>>({});
   const [restaurant, setRestaurant] = useState<IRestaurant | null>(null);
+  const [productDetail, setProductDetail] = useState<IProductDetail | null>(
+    null
+  );
 
   return (
     <AppContext.Provider
@@ -36,6 +42,8 @@ const AppProvider = (props: IProps) => {
         setCart,
         restaurant,
         setRestaurant,
+        productDetail,
+        setProductDetail,
       }}
     >
       {props.children}

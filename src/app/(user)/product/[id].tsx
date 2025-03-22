@@ -1,8 +1,8 @@
 import RMain from "@/components/example/restaurant/main";
-import { getRestaurantByIdAPI } from "@/utils/api";
+import { getProductByIdAPI } from "@/utils/api";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { Dimensions, Text, View } from "react-native";
+import { Dimensions, Text, View, Alert } from "react-native";
 import ContentLoader, { Rect } from "react-content-loader/native";
 import { useCurrentApp } from "@/context/app.context";
 const { height: sHeight, width: sWidth } = Dimensions.get("window");
@@ -10,20 +10,43 @@ const { height: sHeight, width: sWidth } = Dimensions.get("window");
 const ProductPage = () => {
   const { id } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
-  const { setRestaurant } = useCurrentApp();
+  const { setProductDetail } = useCurrentApp();
 
   useEffect(() => {
-    const fetchRestaurant = async () => {
-      setLoading(true);
-      const res = await getRestaurantByIdAPI(id as string);
-      if (res.data) {
-        setRestaurant(res.data);
+    const fetchProductDetail = async () => {
+      try {
+        setLoading(true);
+        if (!id) {
+          console.error("No product ID provided");
+          setLoading(false);
+          return;
+        }
+
+        console.log("Fetching product with ID:", id);
+        const response = await getProductByIdAPI(id as string);
+
+        // Log the entire response to debug
+        console.log("API Response:", JSON.stringify(response, null, 2));
+
+        // Check if we have result data in the response
+        if (response && response.result) {
+          console.log("Setting product detail:", response.result);
+          setProductDetail(response.result);
+        } else {
+          console.error("No product data in response:", response);
+          Alert.alert("Error", "Could not load product details");
+        }
+      } catch (error) {
+        console.error("Error fetching product:", error);
+        Alert.alert("Error", "Failed to load product details");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    fetchRestaurant();
-  }, [id]);
+    fetchProductDetail();
+  }, [id, setProductDetail]);
+
   return (
     <View style={{ flex: 1 }}>
       {loading === false ? (

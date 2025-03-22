@@ -49,6 +49,13 @@ declare global {
         updatedAt: Date;
     }
 
+    interface ITopProducts {
+        _id: string;
+        product_name: string;
+        product_thumb: string;
+        product_price: number;
+    }
+
     interface IRestaurant {
         _id: string;
         name: string;
@@ -63,6 +70,37 @@ declare global {
 
         menu: IMenu[];
         isLike: boolean;
+    }
+
+    interface IProductDetail {
+        _id: string;
+        product_name: string;
+        product_thumb: string;
+        product_price: number;
+        product_quantity: number;
+        product_type: string;
+        product_description: string;
+        product_ratingsAverage: number;
+        product_shop: string;
+        created_at: Date;
+        updated_at: Date;
+        isPublished: boolean;
+        isDraft: boolean;
+        product_slug: string;
+        product_attributes: IProductAttribute;
+    }
+
+    interface IProductAttribute {
+        brand?: string;
+        size?: string;
+        color?: string;
+        material?: string;
+        style?: string;
+        author?: string;
+        manufacturer?: string;
+        model?: string;
+        year_published?: number;
+        publisher?: string;
     }
 
     interface IMenu {
@@ -142,4 +180,30 @@ declare global {
         updatedAt: Date;
     }
 
+    interface IAddToCart {
+        product: {
+            product_id: string,
+            shopId: string,
+            product_quantity: number,
+            name: string,
+            product_price: number
+        }
+    }
+
+    interface ICartResponse {
+        _id: string;
+        cart_status: string;
+        cart_userId: string;
+        cart_count_product: number;
+        cart_total_price: number;
+        cart_products: ICartItem[];
+    }
+
+    interface ICartItem {
+        product_id: string;
+        shopId: string;
+        product_quantity: number;
+        name: string;
+        product_price: number;
+    }
 }

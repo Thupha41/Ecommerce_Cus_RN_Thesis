@@ -182,7 +182,8 @@ const AIChatPage = () => {
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
-
+    // Clear input
+    setInputText("");
     // Add user message to chat
     setMessages((prev) => [
       ...prev,
@@ -216,9 +217,6 @@ const AIChatPage = () => {
     } finally {
       setIsLoading(false); // Hide loading animation
     }
-
-    // Clear input
-    setInputText("");
   };
 
   const renderOptionsModal = () => (

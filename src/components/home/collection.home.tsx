@@ -11,7 +11,7 @@ import {
 import demo from "@/assets/demo.jpg";
 import { APP_COLOR } from "@/utils/constants";
 import { useEffect, useState } from "react";
-import { getTopRestaurant } from "@/utils/api";
+import { getTopProducts } from "@/utils/api";
 import { router } from "expo-router";
 import ContentLoader, { Rect } from "react-content-loader/native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -46,16 +46,17 @@ const CollectionHome = (props: IProps) => {
     { key: 4, image: demo, name: "cua hang 4" },
     { key: 5, image: demo, name: "cua hang 5" },
   ];
-  const [restaurants, setRestaurants] = useState<ITopRestaurant[]>([]);
+  const [products, setProducts] = useState<ITopProducts[]>([]);
 
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const res = await getTopRestaurant(refAPI);
-      if (res.data) {
-        setRestaurants(res.data);
+      const res = await getTopProducts(refAPI);
+      console.log(">>> check res", res);
+      if (res.result) {
+        setProducts(res.result);
       } else {
         //error
       }
@@ -69,7 +70,7 @@ const CollectionHome = (props: IProps) => {
       ? process.env.EXPO_PUBLIC_ANDROID_API_URL
       : process.env.EXPO_PUBLIC_IOS_API_URL;
 
-  const baseImage = `${backend}/images/restaurant`;
+  const baseImage = `${backend}/api/v1/products/image`;
 
   return (
     <>
@@ -112,7 +113,7 @@ const CollectionHome = (props: IProps) => {
             <Text style={{ color: "#5a5a5a" }}>{description}</Text>
           </View>
           <FlatList
-            data={restaurants}
+            data={products}
             horizontal
             contentContainerStyle={{ gap: 5 }}
             showsVerticalScrollIndicator={false}
@@ -130,7 +131,7 @@ const CollectionHome = (props: IProps) => {
                   <View style={{ backgroundColor: "#efefef" }}>
                     <Image
                       style={{ height: 130, width: 130 }}
-                      source={{ uri: `${baseImage}/${item.image}` }}
+                      source={{ uri: `${baseImage}/${item.product_thumb}` }}
                     />
                     <View style={{ padding: 5 }}>
                       <Text
@@ -138,7 +139,7 @@ const CollectionHome = (props: IProps) => {
                         ellipsizeMode="tail"
                         style={{ fontWeight: "600", maxWidth: 130 }}
                       >
-                        {item.name}
+                        {item.product_name}
                       </Text>
                       <View>
                         <View style={styles.sale}>
