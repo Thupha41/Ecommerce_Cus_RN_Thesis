@@ -1,5 +1,5 @@
 {
-  "name": "RN-food-app-thupha4141",
+  "name": "RN-ezshop-thupha4141",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "author": {
@@ -22,7 +22,10 @@
     "axios": "1.7.5",
     "debounce": "2.1.1",
     "expo": "51.0.22",
+    "expo-camera": "~15.0.16",
     "expo-constants": "16.0.2",
+    "expo-document-picker": "~12.0.2",
+    "expo-image-picker": "~15.1.0",
     "expo-linear-gradient": "13.0.2",
     "expo-linking": "6.3.1",
     "expo-network": "^7.0.4",
@@ -33,6 +36,7 @@
     "react": "18.2.0",
     "react-content-loader": "7.0.2",
     "react-native": "0.74.3",
+    "react-native-event-listeners": "^1.0.7",
     "react-native-gesture-handler": "2.16.1",
     "react-native-otp-textinput": "1.1.6",
     "react-native-reanimated": "3.10.1",
@@ -42,10 +46,7 @@
     "react-native-screens": "3.31.1",
     "react-native-svg": "15.7.1",
     "react-native-tabs-section-list": "1.0.1",
-    "yup": "1.4.0",
-    "expo-image-picker": "~15.1.0",
-    "expo-document-picker": "~12.0.2",
-    "expo-camera": "~15.0.16"
+    "yup": "1.4.0"
   },
   "devDependencies": {
     "@babel/core": "7.24.9",

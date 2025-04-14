@@ -1,9 +1,10 @@
 {
   "expo": {
-    "name": "RN-shoplaz-thupha",
-    "slug": "RN-shoplaz-thupha",
+    "name": "RN-ezshop-thupha",
+    "slug": "RN-ezshop-thupha",
     "version": "1.0.0",
     "orientation": "portrait",
+    "jsEngine": "hermes",
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {

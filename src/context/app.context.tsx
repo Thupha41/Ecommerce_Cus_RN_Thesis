@@ -6,7 +6,7 @@ interface AppContextType {
   appState: IUserLogin | null;
   setAppState: (v: any) => void;
 
-  cart: ICart | Record<string, never>;
+  cart: ICartResponse | Record<string, never>;
   setCart: (v: any) => void;
 
   restaurant: IRestaurant | null;
@@ -25,12 +25,12 @@ const AppProvider = (props: IProps) => {
   const [theme, setTheme] = useState<string>("light");
   const [appState, setAppState] = useState<IUserLogin | null>(null);
 
-  const [cart, setCart] = useState<ICart | Record<string, never>>({});
+  const [cart, setCart] = useState<ICartResponse | Record<string, never>>({});
   const [restaurant, setRestaurant] = useState<IRestaurant | null>(null);
   const [productDetail, setProductDetail] = useState<IProductDetail | null>(
     null
   );
-
+  console.log(">>> check appState", appState);
   return (
     <AppContext.Provider
       value={{

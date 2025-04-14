@@ -145,6 +145,15 @@ const RootLayout = () => {
                 options={{ headerShown: false }}
                 // options={{ headerTitle: "Sản phẩm" }}
               />
+              <Stack.Screen
+                name="(user)/product/name/[name]"
+                options={{ headerShown: false }}
+                // options={{ headerTitle: "Sản phẩm" }}
+              />
+              <Stack.Screen
+                name="(user)/cart/[id]"
+                options={{ headerShown: false }}
+              />
 
               <Stack.Screen
                 name="(user)/product/create.modal"

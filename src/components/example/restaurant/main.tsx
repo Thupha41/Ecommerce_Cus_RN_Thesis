@@ -62,7 +62,7 @@ const RMain = () => {
   const { productDetail } = useCurrentApp();
   const scrollY = useSharedValue(0);
 
-  const sectionListRef = useRef(null);
+  const sectionListRef = useRef<any>(null);
   const flatListRef = useRef<FlatList>(null);
   const [activeMenuIndex, setActiveMenuIndex] = useState<number | string>(0);
   const blockUpdateRef = useRef<boolean>(false);
@@ -265,9 +265,7 @@ const RMain = () => {
       <View style={styles.header}>
         <Image
           source={{
-            uri: `${getURLBaseBackend()}/api/v1/products/image/${
-              productDetail?.product_thumb || "default.jpg"
-            }`,
+            uri: `${productDetail?.product_thumb}`,
           }}
           style={styles.headerImage}
         />
@@ -341,9 +339,9 @@ const RMain = () => {
           paddingBottom: BOTTOM_BAR_HEIGHT + 20, // Add padding to account for sticky bottom
         }}
         sections={menuData}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, section }) => {
-          if (item.type === "description") {
+        keyExtractor={(item: any) => item.id}
+        renderItem={({ item, section }: { item: any; section: any }) => {
+          if ((item as any).type === "description") {
             return (
               <View style={{ padding: 15, backgroundColor: "white" }}>
                 <Text
@@ -676,7 +674,7 @@ const RMain = () => {
             return null;
           }
         }}
-        renderSectionHeader={({ section }) => (
+        renderSectionHeader={({ section }: { section: any }) => (
           <View
             style={{
               backgroundColor: "white",

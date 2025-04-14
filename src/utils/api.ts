@@ -35,9 +35,9 @@ export const getAccountAPI = () => {
 
 export const chatWithAI = async (user_id: string, conversation_id: string, text: string) => {
     try {
-        const url = Platform.OS === 'android' 
-            ? 'http://10.0.2.2:8082/chat/'
-            : 'http://localhost:8082/chat/';
+        const url = 
+             'https://clipchattest.ezgroups.com.vn/api/v1/agent/get-response/'
+ 
             
         const formData = new FormData();
         formData.append('conversation_id', conversation_id);
@@ -105,13 +105,17 @@ export const getRestaurantByIdAPI = (id: string) => {
 export const getProductByIdAPI = (id: string) => {
     const url = `/api/v1/products/${id}`;
     return axios1.get<IBackendRes<IProductDetail>>(url)
-        .then(response => {
-            return response;
-        })
-        .catch(error => {
-            console.error("API error:", error.response || error.message || error);
-            throw error;
-        });
+}
+
+export const getProductByNameAPI = (name: string) => {
+    // Đảm bảo tên sản phẩm đã được mã hóa URI
+    const encodedName = encodeURIComponent(name);
+    let url = `/api/v1/products/search`;
+    if (encodedName) {
+        url += `?product_name=${encodedName}`;
+    }
+    console.log("API URL:", url);
+    return axios1.post<IBackendRes<IProductDetail>>(url);
 }
 
 export const processDataRestaurantMenu = (restaurant: IRestaurant | null) => {
@@ -240,21 +244,21 @@ export const getCartItemsAPI = (userId: string) => {
 }
 
 // Add product to cart
-export const addProductToCartAPI = (productData: IAddToCart) => {
+export const addProductToCartAPI = (product: IAddToCart) => {
     const url = `/api/v1/carts`;
-    return axios1.post<IBackendRes<ICartResponse>>(url, { productData });
+    return axios1.post<IBackendRes<ICartResponse>>(url, { product });
 }
 
 // Update cart item quantity (increase)
 export const increaseCartItemQuantityAPI = (productId: string) => {
     const url = `/api/v1/carts/increase/${productId}`;
-    return axios1.post<IBackendRes<ICartResponse>>(url);
+    return axios1.put<IBackendRes<ICartResponse>>(url);
 }
 
 // Update cart item quantity (decrease)
 export const decreaseCartItemQuantityAPI = (productId: string) => {
     const url = `/api/v1/carts/decrease/${productId}`;
-    return axios1.post<IBackendRes<ICartResponse>>(url);
+    return axios1.put<IBackendRes<ICartResponse>>(url);
 }
 
 // Delete cart item
