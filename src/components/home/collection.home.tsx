@@ -15,6 +15,7 @@ import { getTopProducts } from "@/utils/api";
 import { router } from "expo-router";
 import ContentLoader, { Rect } from "react-content-loader/native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import ProductCard from "@/components/card/card.product";
 
 const { height: sHeight, width: sWidth } = Dimensions.get("window");
 
@@ -54,7 +55,7 @@ const CollectionHome = (props: IProps) => {
     const fetchData = async () => {
       setLoading(true);
       const res = await getTopProducts(refAPI);
-      console.log(">>> check res", res);
+
       if (res.result) {
         setProducts(res.result);
       } else {
@@ -64,13 +65,6 @@ const CollectionHome = (props: IProps) => {
     };
     fetchData();
   }, [refAPI]);
-
-  const backend =
-    Platform.OS === "android"
-      ? process.env.EXPO_PUBLIC_ANDROID_API_URL
-      : process.env.EXPO_PUBLIC_IOS_API_URL;
-
-  const baseImage = `${backend}/api/v1/products/image`;
 
   return (
     <>
@@ -113,44 +107,18 @@ const CollectionHome = (props: IProps) => {
             <Text style={{ color: "#5a5a5a" }}>{description}</Text>
           </View>
           <FlatList
-            data={products}
             horizontal
             contentContainerStyle={{ gap: 5 }}
-            showsVerticalScrollIndicator={false}
             showsHorizontalScrollIndicator={false}
+            data={products}
+            keyExtractor={(item) => item._id}
             renderItem={({ item }) => {
               return (
-                <Pressable
-                  onPress={() =>
-                    router.navigate({
-                      pathname: "/product/[id]",
-                      params: { id: item._id },
-                    })
-                  }
-                >
-                  <View style={{ backgroundColor: "#efefef" }}>
-                    <Image
-                      style={{ height: 130, width: 130 }}
-                      source={{ uri: `${baseImage}/${item.product_thumb}` }}
-                    />
-                    <View style={{ padding: 5 }}>
-                      <Text
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                        style={{ fontWeight: "600", maxWidth: 130 }}
-                      >
-                        {item.product_name}
-                      </Text>
-                      <View>
-                        <View style={styles.sale}>
-                          <Text style={{ color: APP_COLOR.ORANGE }}>
-                            Flash Sale
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                </Pressable>
+                <ProductCard
+                  product={item}
+                  showFlashSale={true}
+                  navigationType="byId"
+                />
               );
             }}
           />

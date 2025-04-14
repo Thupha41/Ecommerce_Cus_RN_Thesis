@@ -21,16 +21,37 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as Camera from "expo-camera";
+import ProductResults from "@/components/chat/product-results";
+
+// Interface for product results from AI
+interface AIResponse {
+  response: string;
+  context?: {
+    results?: any[];
+  };
+}
+
+interface ProductItem {
+  product_id: string;
+  product_name: string;
+  product_thumb?: string;
+  product_price?: number;
+  return_policies_text?: string;
+  specification_text?: string;
+}
 
 const AIChatPage = () => {
   const [messages, setMessages] = useState<
     Array<{
-      type: "text" | "image";
+      id: string;
+      type: "text" | "image" | "products";
       content: string;
       sender: "user" | "ai";
+      products?: ProductItem[];
     }>
   >([
     {
+      id: `ai-welcome-${Date.now()}`,
       type: "text",
       content:
         "Xin chào! Mình là trợ lý AI của bạn tại LazdaMall. Mình đang phát triển nên không phải lúc nào cũng đúng. Bạn có thể phản hồi để giúp mình cải thiện tốt hơn.\n\nMình sẵn sàng giúp bạn với câu hỏi về chính sách và tìm kiếm sản phẩm. Hôm nay bạn cần mình hỗ trợ gì hông? ^^",
@@ -85,6 +106,7 @@ const AIChatPage = () => {
         setMessages((prev) => [
           ...prev,
           {
+            id: `user-image-${Date.now()}`,
             type: "image",
             content: imageUri,
             sender: "user",
@@ -184,10 +206,13 @@ const AIChatPage = () => {
     if (!inputText.trim()) return;
     // Clear input
     setInputText("");
+    const userMsgId = `user-${Date.now()}`;
+
     // Add user message to chat
     setMessages((prev) => [
       ...prev,
       {
+        id: userMsgId,
         type: "text",
         content: inputText,
         sender: "user",
@@ -200,14 +225,104 @@ const AIChatPage = () => {
       // Call API with default values for user_id and session_id
       const response = await chatWithAI("1", "1", inputText);
 
-      // Add AI response to chat
-      if (response.data?.response) {
+      // Parse the response data
+      const responseData: AIResponse = response.data;
+      console.log("Full API response:", JSON.stringify(responseData));
+
+      // Fix: Xử lý cấu trúc dữ liệu phức tạp
+      let products = responseData.context?.results;
+      console.log("Original products structure:", JSON.stringify(products));
+
+      let normalizedProducts: ProductItem[] = [];
+
+      // Trường hợp response là string JSON
+      if (
+        typeof responseData.response === "string" &&
+        responseData.response.includes('"product_id"')
+      ) {
+        try {
+          // Thử parse từ string JSON trong response
+          const jsonMatch = responseData.response.match(
+            /\{[\s\S]*"results":\s*(\[[\s\S]*\])[\s\S]*\}/
+          );
+          if (jsonMatch && jsonMatch[1]) {
+            const extractedJson = jsonMatch[1];
+            console.log("Extracted JSON from response text:", extractedJson);
+            try {
+              const parsedProducts = JSON.parse(extractedJson);
+              if (Array.isArray(parsedProducts)) {
+                products = parsedProducts;
+                console.log(
+                  "Parsed products from response text:",
+                  parsedProducts
+                );
+              }
+            } catch (e) {
+              console.log("Error parsing JSON from response text:", e);
+            }
+          }
+        } catch (e) {
+          console.log("Error extracting JSON from response:", e);
+        }
+      }
+
+      if (Array.isArray(products)) {
+        // Kiểm tra nếu là mảng lồng mảng
+        if (products.length > 0 && Array.isArray(products[0])) {
+          normalizedProducts = products[0] as ProductItem[];
+          console.log(
+            "Nested array detected, using products[0]:",
+            normalizedProducts
+          );
+        } else {
+          normalizedProducts = products as ProductItem[];
+          console.log("Regular array detected:", normalizedProducts);
+        }
+
+        // Lọc bỏ các phần tử null/undefined
+        normalizedProducts = normalizedProducts.filter(
+          (item) => item !== null && item !== undefined
+        );
+        console.log(
+          "After filtering null/undefined items:",
+          normalizedProducts.length
+        );
+      }
+
+      const hasProductResults =
+        normalizedProducts && normalizedProducts.length > 0;
+      console.log(
+        "Has product results:",
+        hasProductResults,
+        "Count:",
+        normalizedProducts.length
+      );
+
+      // Hiển thị response text và products (nếu có)
+      if (responseData.response) {
+        const aiMsgId = `ai-${Date.now()}`;
         setMessages((prev) => [
           ...prev,
           {
+            id: aiMsgId,
             type: "text",
-            content: response.data.response,
+            content: responseData.response,
             sender: "ai",
+          },
+        ]);
+      }
+
+      // Hiển thị sản phẩm nếu có
+      if (hasProductResults) {
+        const aiProductsMsgId = `ai-products-${Date.now()}`;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: aiProductsMsgId,
+            type: "products",
+            content: "",
+            sender: "ai",
+            products: normalizedProducts,
           },
         ]);
       }
@@ -263,7 +378,7 @@ const AIChatPage = () => {
             }}
             onPress={() => {
               setShowOptions(false);
-              // Handle take picture
+              takePicture();
             }}
           >
             <MaterialIcons
@@ -312,6 +427,62 @@ const AIChatPage = () => {
     </Modal>
   );
 
+  const renderMessage = (msg: any, index: number) => {
+    if (msg.type === "products" && msg.products && msg.products.length > 0) {
+      console.log("Rendering products:", msg.products);
+      return (
+        <View key={msg.id} style={{ marginBottom: 20 }}>
+          <ProductResults products={msg.products} />
+        </View>
+      );
+    }
+
+    return (
+      <View
+        key={msg.id}
+        style={{
+          flexDirection: "row",
+          justifyContent: msg.sender === "user" ? "flex-end" : "flex-start",
+          marginBottom: 30,
+          alignItems: "flex-start",
+        }}
+      >
+        {msg.sender === "ai" && (
+          <Image
+            source={require("@/assets/ai-avatar.png")}
+            style={{
+              width: 30,
+              height: 30,
+              marginRight: 8,
+            }}
+          />
+        )}
+
+        <View
+          style={{
+            maxWidth: "70%",
+            backgroundColor:
+              msg.sender === "user" ? APP_COLOR.ORANGE : "#f0f2ff",
+            padding: 12,
+            borderRadius: 16,
+            borderBottomRightRadius: msg.sender === "user" ? 4 : 16,
+            borderBottomLeftRadius: msg.sender === "ai" ? 4 : 16,
+          }}
+        >
+          <Text
+            style={{
+              color: msg.sender === "user" ? "#fff" : "#000",
+              fontSize: 16,
+              lineHeight: 24,
+            }}
+          >
+            {msg.content}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
       <View
@@ -339,51 +510,7 @@ const AIChatPage = () => {
 
         {/* AI Chat Area */}
         <ScrollView style={{ flex: 1, padding: 15 }}>
-          {messages.map((msg, index) => (
-            <View
-              key={index}
-              style={{
-                flexDirection: "row",
-                justifyContent:
-                  msg.sender === "user" ? "flex-end" : "flex-start",
-                marginBottom: 30,
-                alignItems: "flex-start",
-              }}
-            >
-              {msg.sender === "ai" && (
-                <Image
-                  source={require("@/assets/ai-avatar.png")}
-                  style={{
-                    width: 30,
-                    height: 30,
-                    marginRight: 8,
-                  }}
-                />
-              )}
-
-              <View
-                style={{
-                  maxWidth: "70%",
-                  backgroundColor:
-                    msg.sender === "user" ? APP_COLOR.ORANGE : "#f0f2ff",
-                  padding: 12,
-                  borderRadius: 16,
-                  borderBottomRightRadius: msg.sender === "user" ? 4 : 16,
-                  borderBottomLeftRadius: msg.sender === "ai" ? 4 : 16,
-                }}
-              >
-                <Text
-                  style={{
-                    color: msg.sender === "user" ? "#fff" : "#000",
-                    fontSize: 16,
-                    lineHeight: 24,
-                  }}
-                >
-                  {msg.content}
-                </Text>
-              </View>
-            </View>
-          ))}
+          {messages.map((msg, index) => renderMessage(msg, index))}
           {isLoading && <LoadingDots />}
         </ScrollView>
 

@@ -15,7 +15,7 @@ type CustomFlatListProps<T> = Omit<FlatListProps<T>, "ListHeaderComponent"> & {
    */
   StickyElementComponent: JSX.Element;
   /**
-   * An element that is higher than the list but lower than {@link Props.HeaderComponent HeaderComponent} and {@link Props.StickyElementComponent StickyElementComponent}
+   * An element that is higher than the list but lower than {@link CustomFlatListProps.HeaderComponent HeaderComponent} and {@link CustomFlatListProps.StickyElementComponent StickyElementComponent}
    *
    * Hides when scrolling
    */
