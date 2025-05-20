@@ -21,16 +21,10 @@ const ProductPage = () => {
           setLoading(false);
           return;
         }
-
-        console.log("Fetching product with ID:", id);
         const response = await getProductByIdAPI(id as string);
-
-        // Log the entire response to debug
-        console.log("API Response:", JSON.stringify(response, null, 2));
 
         // Check if we have result data in the response
         if (response && response.result) {
-          console.log("Setting product detail:", response.result);
           setProductDetail(response.result);
         } else {
           console.error("No product data in response:", response);

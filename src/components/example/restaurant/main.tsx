@@ -17,6 +17,7 @@ import Animated, {
   Extrapolation,
   interpolateColor,
 } from "react-native-reanimated";
+import { router } from "expo-router";
 import Info from "./info";
 import { APP_COLOR } from "@/utils/constants";
 import StickyHeader from "./sticky.header";
@@ -25,6 +26,7 @@ import { AntDesign } from "@expo/vector-icons";
 import { getURLBaseBackend } from "@/utils/api";
 import StickyBottom from "./sticky.bottom";
 import { useCurrentApp } from "@/context/app.context";
+import ProductDescription from "@/components/product/product-description";
 
 // Define item types for each section
 interface SectionItem {
@@ -51,7 +53,7 @@ const AnimatedSectionList = Animated.createAnimatedComponent(SectionList);
 
 const { height: sHeight, width: sWidth } = Dimensions.get("window");
 
-const HEADER_HEIGHT = 120;
+const HEADER_HEIGHT = 50;
 const IMAGE_HEIGHT = 350;
 const INFO_HEIGHT = 450;
 const SLIDE_MENU_HEIGHT = 60;
@@ -66,10 +68,17 @@ const RMain = () => {
   const flatListRef = useRef<FlatList>(null);
   const [activeMenuIndex, setActiveMenuIndex] = useState<number | string>(0);
   const blockUpdateRef = useRef<boolean>(false);
-  const [showFullDescription, setShowFullDescription] = useState(false);
 
   // Create menu data from product detail
   const menuData = useMemo(() => {
+    // Trích xuất thông tin từ product_attributes
+    const getAttributeValue = (name: string) => {
+      const attribute = productDetail?.product_attributes?.find(
+        (attr) => attr.name === name
+      );
+      return attribute?.value || "Không có thông tin";
+    };
+
     // Default empty sections array that matches the expected type
     const defaultSections: Section[] = [
       {
@@ -79,8 +88,7 @@ const RMain = () => {
           {
             id: "description",
             type: "description",
-            content:
-              productDetail?.product_description || "No description available",
+            content: productDetail?.product_description || "",
           },
         ],
       },
@@ -91,10 +99,10 @@ const RMain = () => {
           {
             id: "details",
             type: "details",
-            productType: productDetail?.product_type,
-            brand: productDetail?.product_attributes?.brand,
-            size: productDetail?.product_attributes?.size,
-            material: productDetail?.product_attributes?.material,
+            productType: getAttributeValue("Cung cấp bởi"),
+            brand: getAttributeValue("Thương hiệu"),
+            size: getAttributeValue("Chất liệu"),
+            material: getAttributeValue("Xuất xứ thương hiệu"),
           },
         ],
       },
@@ -116,7 +124,7 @@ const RMain = () => {
           {
             id: "shop",
             type: "shop",
-            shopName: "Mai Thảo Shop",
+            shopName: productDetail?.shop?.shop_name || "Shop",
           },
         ],
       },
@@ -245,11 +253,6 @@ const RMain = () => {
     }
   ).current;
 
-  // Toggle description expand/collapse
-  const toggleDescription = () => {
-    setShowFullDescription(!showFullDescription);
-  };
-
   return (
     <View style={styles.container}>
       <StickyHeader
@@ -333,6 +336,7 @@ const RMain = () => {
         ref={sectionListRef}
         style={{ zIndex: 1 }}
         onScroll={onScroll}
+        scrollEventThrottle={16}
         stickySectionHeadersEnabled={false}
         contentContainerStyle={{
           paddingTop: IMAGE_HEIGHT + INFO_HEIGHT + SLIDE_MENU_HEIGHT - 2,
@@ -343,64 +347,37 @@ const RMain = () => {
         renderItem={({ item, section }: { item: any; section: any }) => {
           if ((item as any).type === "description") {
             return (
-              <View style={{ padding: 15, backgroundColor: "white" }}>
-                <Text
-                  style={{ lineHeight: 20 }}
-                  numberOfLines={
-                    showFullDescription ? undefined : MAX_DESCRIPTION_LINES
-                  }
-                >
-                  {item.content}
-                </Text>
-
-                <TouchableOpacity
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    marginTop: 10,
-                    alignSelf: "center",
-                    justifyContent: "center",
-                    paddingHorizontal: 10,
-                  }}
-                  onPress={toggleDescription}
-                >
-                  <Text
-                    style={{
-                      color: APP_COLOR.ORANGE,
-                      marginRight: 5,
-                    }}
-                  >
-                    {showFullDescription ? "Thu gọn" : "Xem thêm"}
-                  </Text>
-                  <AntDesign
-                    name={showFullDescription ? "up" : "down"}
-                    size={14}
-                    color={APP_COLOR.ORANGE}
-                  />
-                </TouchableOpacity>
-              </View>
+              <ProductDescription
+                htmlContent={item.content}
+                maxLines={MAX_DESCRIPTION_LINES}
+              />
             );
           } else if (item.type === "details") {
             return (
               <View style={{ padding: 15, backgroundColor: "white" }}>
-                <View style={{ flexDirection: "row", marginBottom: 5 }}>
-                  <Text style={{ width: 100, color: "#666" }}>Loại:</Text>
-                  <Text>{item.productType}</Text>
-                </View>
-                <View style={{ flexDirection: "row", marginBottom: 5 }}>
-                  <Text style={{ width: 100, color: "#666" }}>
-                    Thương hiệu:
+                {/* Hiển thị tất cả thuộc tính sản phẩm */}
+                {productDetail?.product_attributes &&
+                productDetail.product_attributes.length > 0 ? (
+                  <>
+                    {productDetail.product_attributes.map((attr, index) => (
+                      <View
+                        key={index}
+                        style={{ flexDirection: "row", marginBottom: 8 }}
+                      >
+                        <Text style={{ width: 140, color: "#666" }}>
+                          {attr.name}:
+                        </Text>
+                        <Text style={{ flex: 1, color: "#333" }}>
+                          {attr.value}
+                        </Text>
+                      </View>
+                    ))}
+                  </>
+                ) : (
+                  <Text style={styles.emptyMessage}>
+                    Không có thông tin chi tiết sản phẩm
                   </Text>
-                  <Text>{item.brand}</Text>
-                </View>
-                <View style={{ flexDirection: "row", marginBottom: 5 }}>
-                  <Text style={{ width: 100, color: "#666" }}>Kích thước:</Text>
-                  <Text>{item.size}</Text>
-                </View>
-                <View style={{ flexDirection: "row" }}>
-                  <Text style={{ width: 100, color: "#666" }}>Chất liệu:</Text>
-                  <Text>{item.material}</Text>
-                </View>
+                )}
               </View>
             );
           } else if (item.type === "rating") {
@@ -421,7 +398,7 @@ const RMain = () => {
                       marginRight: 10,
                     }}
                   >
-                    {item.rating}
+                    {productDetail?.product_ratingsAverage.toFixed(1) || "0"}
                   </Text>
                   <View>
                     <View style={{ flexDirection: "row", marginBottom: 5 }}>
@@ -431,7 +408,10 @@ const RMain = () => {
                           name="star"
                           size={16}
                           color={
-                            star <= Math.round(item.rating || 5)
+                            star <=
+                            Math.round(
+                              productDetail?.product_ratingsAverage || 0
+                            )
                               ? "#FFD700"
                               : "#ccc"
                           }
@@ -440,103 +420,22 @@ const RMain = () => {
                       ))}
                     </View>
                     <Text style={{ color: "#666", fontSize: 12 }}>
-                      4 đánh giá
+                      Đánh giá sản phẩm
                     </Text>
                   </View>
                 </View>
 
-                {/* Sample reviews */}
+                {/* Sample reviews - Placeholder for now */}
                 <View style={{ marginBottom: 15 }}>
-                  <View
+                  <Text
                     style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginBottom: 10,
+                      fontStyle: "italic",
+                      color: "#666",
+                      textAlign: "center",
                     }}
                   >
-                    <View
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 15,
-                        backgroundColor: "#f5f5f5",
-                        marginRight: 10,
-                      }}
-                    />
-                    <View>
-                      <Text style={{ fontWeight: "bold" }}>Nguyễn Văn A</Text>
-                      <View style={{ flexDirection: "row" }}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <AntDesign
-                            key={star}
-                            name="star"
-                            size={12}
-                            color="#FFD700"
-                            style={{ marginRight: 2 }}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                  <Text>
-                    Sản phẩm rất tốt, đóng gói cẩn thận, giao hàng nhanh!
+                    Chưa có đánh giá nào cho sản phẩm này
                   </Text>
-                </View>
-
-                {/* Product videos */}
-                <View>
-                  <Text style={{ fontWeight: "bold", marginBottom: 10 }}>
-                    Video về sản phẩm
-                  </Text>
-                  <View style={{ flexDirection: "row" }}>
-                    <View
-                      style={{
-                        width: 150,
-                        height: 100,
-                        backgroundColor: "#f5f5f5",
-                        marginRight: 10,
-                        borderRadius: 5,
-                        overflow: "hidden",
-                        position: "relative",
-                      }}
-                    >
-                      <View
-                        style={{
-                          position: "absolute",
-                          bottom: 10,
-                          left: 10,
-                          right: 10,
-                        }}
-                      >
-                        <Text style={{ color: "white", fontSize: 12 }}>
-                          Hộp quà Romand Juicy trái cây mini...
-                        </Text>
-                      </View>
-                    </View>
-                    <View
-                      style={{
-                        width: 150,
-                        height: 100,
-                        backgroundColor: "#f5f5f5",
-                        borderRadius: 5,
-                        overflow: "hidden",
-                        position: "relative",
-                      }}
-                    >
-                      <View
-                        style={{
-                          position: "absolute",
-                          bottom: 10,
-                          left: 10,
-                          right: 10,
-                        }}
-                      >
-                        <Text style={{ color: "white", fontSize: 12 }}>
-                          #ShopeeCreator #shopeevideo #m...
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
                 </View>
               </View>
             );
@@ -551,31 +450,86 @@ const RMain = () => {
                     marginBottom: 15,
                   }}
                 >
-                  <View
-                    style={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: 25,
-                      backgroundColor: "#f5f5f5",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginRight: 10,
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (productDetail?.shop?._id) {
+                        router.push({
+                          pathname: "/(user)/shop/[id]",
+                          params: { id: productDetail.shop._id },
+                        });
+                      }
                     }}
                   >
-                    <Text style={{ textAlign: "center", lineHeight: 50 }}>
-                      MT
-                    </Text>
-                  </View>
+                    {productDetail?.shop?.shop_logo ? (
+                      <Image
+                        source={{ uri: productDetail.shop.shop_logo }}
+                        style={{
+                          width: 50,
+                          height: 50,
+                          borderRadius: 25,
+                          marginRight: 10,
+                        }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 50,
+                          height: 50,
+                          borderRadius: 25,
+                          backgroundColor: APP_COLOR.ORANGE,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          marginRight: 10,
+                        }}
+                      >
+                        <Text style={{ color: "white", fontWeight: "bold" }}>
+                          {productDetail?.shop?.shop_name?.charAt(0) || "S"}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: "bold", fontSize: 16 }}>
-                      {item.shopName}
-                    </Text>
-                    <Text style={{ color: "#666", fontSize: 12 }}>
-                      Online 3 giờ trước
-                    </Text>
-                    <Text style={{ color: "#666", fontSize: 12 }}>
-                      Đồng Nai
-                    </Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (productDetail?.shop?._id) {
+                          router.push({
+                            pathname: "/(user)/shop/[id]",
+                            params: { id: productDetail.shop._id },
+                          });
+                        }
+                      }}
+                    >
+                      <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                        {productDetail?.shop?.shop_name || "Shop"}
+                      </Text>
+                    </TouchableOpacity>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginTop: 3,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginRight: 10,
+                        }}
+                      >
+                        <AntDesign name="star" size={12} color="#FFD700" />
+                        <Text
+                          style={{ color: "#666", fontSize: 12, marginLeft: 2 }}
+                        >
+                          {productDetail?.shop?.shop_rating?.toFixed(1) ||
+                            "0.0"}
+                        </Text>
+                      </View>
+                      <Text style={{ color: "#666", fontSize: 12 }}>
+                        {productDetail?.shop?.total_products || 0} sản phẩm
+                      </Text>
+                    </View>
                   </View>
                   <TouchableOpacity
                     style={{
@@ -584,6 +538,14 @@ const RMain = () => {
                       paddingHorizontal: 15,
                       paddingVertical: 5,
                       borderRadius: 3,
+                    }}
+                    onPress={() => {
+                      if (productDetail?.shop?._id) {
+                        router.push({
+                          pathname: "/(user)/shop/[id]",
+                          params: { id: productDetail.shop._id },
+                        });
+                      }
                     }}
                   >
                     <Text style={{ color: APP_COLOR.ORANGE }}>Xem Shop</Text>
@@ -596,78 +558,129 @@ const RMain = () => {
                     flexDirection: "row",
                     justifyContent: "space-around",
                     marginBottom: 15,
+                    backgroundColor: "#f9f9f9",
+                    borderRadius: 8,
+                    padding: 10,
                   }}
                 >
                   <View style={{ alignItems: "center" }}>
-                    <Text style={{ fontWeight: "bold" }}>5.0</Text>
+                    <Text style={{ fontWeight: "bold" }}>
+                      {productDetail?.shop?.shop_rating?.toFixed(1) || "0.0"}
+                    </Text>
                     <Text style={{ color: "#666", fontSize: 12 }}>
                       Đánh giá
                     </Text>
                   </View>
                   <View style={{ alignItems: "center" }}>
-                    <Text style={{ fontWeight: "bold" }}>190</Text>
+                    <Text style={{ fontWeight: "bold" }}>
+                      {productDetail?.shop?.total_products || 0}
+                    </Text>
                     <Text style={{ color: "#666", fontSize: 12 }}>
                       Sản phẩm
                     </Text>
                   </View>
                   <View style={{ alignItems: "center" }}>
-                    <Text style={{ fontWeight: "bold" }}>100%</Text>
+                    <Text style={{ fontWeight: "bold" }}>
+                      {productDetail?.shop?.shop_response_rate || 0}%
+                    </Text>
                     <Text style={{ color: "#666", fontSize: 12 }}>
-                      Phản hồi Chat
+                      Phản hồi
                     </Text>
                   </View>
                 </View>
 
                 {/* Other products */}
-                <View style={{ marginTop: 10 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      marginBottom: 10,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "bold" }}>
-                      Các sản phẩm khác của Shop
-                    </Text>
-                    <TouchableOpacity>
-                      <Text style={{ color: APP_COLOR.ORANGE }}>
-                        Xem tất cả
+                {productDetail?.other_shop_products &&
+                productDetail.other_shop_products.length > 0 ? (
+                  <View style={{ marginTop: 10 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: 10,
+                      }}
+                    >
+                      <Text style={{ fontWeight: "bold" }}>
+                        Các sản phẩm khác của Shop
                       </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <FlatList
-                    horizontal
-                    data={[1, 2, 3, 4]}
-                    showsHorizontalScrollIndicator={false}
-                    renderItem={({ item }) => (
-                      <View style={{ width: 120, marginRight: 10 }}>
-                        <View
-                          style={{
-                            height: 120,
-                            backgroundColor: "#f5f5f5",
-                            marginBottom: 5,
-                          }}
-                        />
-                        <Text numberOfLines={2} style={{ fontSize: 12 }}>
-                          Son Tint Bóng Peripera
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (productDetail?.shop?._id) {
+                            router.push({
+                              pathname: "/(user)/shop/[id]",
+                              params: { id: productDetail.shop._id },
+                            });
+                          }
+                        }}
+                      >
+                        <Text style={{ color: APP_COLOR.ORANGE }}>
+                          Xem tất cả ({productDetail?.shop?.total_products || 0}
+                          )
                         </Text>
-                        <Text
+                      </TouchableOpacity>
+                    </View>
+
+                    <FlatList
+                      horizontal
+                      data={productDetail.other_shop_products}
+                      showsHorizontalScrollIndicator={false}
+                      keyExtractor={(item) => item._id}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
                           style={{
-                            color: APP_COLOR.ORANGE,
-                            fontWeight: "bold",
+                            width: 130,
+                            marginRight: 10,
+                            backgroundColor: "#fff",
+                          }}
+                          onPress={() => {
+                            router.push({
+                              pathname: "/(user)/product/[id]",
+                              params: { id: item._id },
+                            });
                           }}
                         >
-                          đ155.000
-                        </Text>
-                        <Text style={{ fontSize: 10, color: "#666" }}>
-                          Đã bán 142
-                        </Text>
-                      </View>
-                    )}
-                  />
-                </View>
+                          <Image
+                            source={{ uri: item.product_thumb }}
+                            style={{
+                              width: 130,
+                              height: 130,
+                              borderRadius: 5,
+                              marginBottom: 5,
+                            }}
+                            resizeMode="cover"
+                          />
+                          <Text
+                            numberOfLines={2}
+                            style={{
+                              fontSize: 13,
+                              marginBottom: 3,
+                              height: 36,
+                            }}
+                          >
+                            {item.product_name}
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              fontWeight: "bold",
+                              color: APP_COLOR.ORANGE,
+                            }}
+                          >
+                            {item.product_price
+                              ? `${item.product_price
+                                  .toString()
+                                  .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}đ`
+                              : "Liên hệ"}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    />
+                  </View>
+                ) : (
+                  <Text style={styles.emptyMessage}>
+                    Không có sản phẩm khác từ Shop này
+                  </Text>
+                )}
               </View>
             );
           } else {
@@ -711,7 +724,7 @@ const RMain = () => {
         <StickyBottom
           price={productDetail?.product_price || 14.5}
           onChat={() => console.log("Chat pressed")}
-          onAddToCart={() => console.log("Add to cart pressed")}
+          // onAddToCart={() => console.log("Add to cart pressed")}
           onBuyWithVoucher={() => console.log("Buy with voucher pressed")}
         />
       </View>
@@ -756,6 +769,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 5,
+  },
+  emptyMessage: {
+    color: "#666",
+    fontStyle: "italic",
+    textAlign: "center",
   },
 });
 

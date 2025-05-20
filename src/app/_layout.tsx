@@ -151,6 +151,10 @@ const RootLayout = () => {
                 // options={{ headerTitle: "Sản phẩm" }}
               />
               <Stack.Screen
+                name="(user)/shop/[id]"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
                 name="(user)/cart/[id]"
                 options={{ headerShown: false }}
               />
@@ -194,6 +198,36 @@ const RootLayout = () => {
                   headerTitle: "Cập nhật mật khẩu",
                   headerBackTitle: "Back",
                 }}
+              />
+              <Stack.Screen
+                name="(user)/category/all-categories"
+                options={{
+                  headerTitle: "Danh mục hàng",
+                  headerBackTitle: "Back",
+                }}
+              />
+              <Stack.Screen
+                name="(user)/checkout/checkout-review"
+                options={{
+                  headerTitle: "Tổng quan đơn hàng",
+                  headerBackTitle: "Back",
+                }}
+              />
+              <Stack.Screen
+                name="(user)/category/products/[id]"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="(user)/(order)/index"
+                options={{
+                  headerTitle: "Lịch sử đơn hàng",
+                  headerBackTitle: "Back",
+                  headerShown: true,
+                }}
+              />
+              <Stack.Screen
+                name="(user)/(order)/[id]"
+                options={{ headerShown: false }}
               />
             </Stack>
           </ThemeProvider>

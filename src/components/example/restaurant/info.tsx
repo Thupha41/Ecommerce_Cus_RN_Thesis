@@ -13,12 +13,6 @@ interface IProps {
 const Info = (props: IProps) => {
   const { infoHeight, productDetail } = props;
 
-  // Calculate discount price (for display purposes)
-  const originalPrice = productDetail?.product_price
-    ? productDetail.product_price * 1.15
-    : 16.7;
-  const discountPercentage = 15;
-
   return (
     <View
       style={{
@@ -57,28 +51,6 @@ const Info = (props: IProps) => {
         >
           {currencyFormatter(productDetail?.product_price || 14.5)}
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-          <Text
-            style={{
-              fontSize: 16,
-              color: "#999",
-              textDecorationLine: "line-through",
-            }}
-          >
-            {currencyFormatter(originalPrice)}
-          </Text>
-          <View
-            style={{
-              backgroundColor: APP_COLOR.ORANGE,
-              padding: 2,
-              borderRadius: 2,
-            }}
-          >
-            <Text style={{ color: "white", fontSize: 12 }}>
-              -{discountPercentage}%
-            </Text>
-          </View>
-        </View>
       </View>
 
       <View style={{ height: 10, backgroundColor: "#e9e9e9" }}></View>
@@ -165,25 +137,6 @@ const Info = (props: IProps) => {
         </View>
         <View style={{ height: 10, backgroundColor: "#e9e9e9" }}></View>
       </View>
-      {/* Product attributes */}
-      {/* <View style={{ marginHorizontal: 10, marginVertical: 10 }}>
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          <Text style={{ color: "#666" }}>Loại:</Text>
-          <Text>{productDetail?.product_type || "Clothing"}</Text>
-        </View>
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 5 }}>
-          <Text style={{ color: "#666" }}>Thương hiệu:</Text>
-          <Text>{productDetail?.product_attributes?.brand || "Cotton"}</Text>
-        </View>
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 5 }}>
-          <Text style={{ color: "#666" }}>Kích thước:</Text>
-          <Text>{productDetail?.product_attributes?.size || "XL"}</Text>
-        </View>
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 5 }}>
-          <Text style={{ color: "#666" }}>Chất liệu:</Text>
-          <Text>{productDetail?.product_attributes?.material || "cotton"}</Text>
-        </View>
-      </View> */}
     </View>
   );
 };

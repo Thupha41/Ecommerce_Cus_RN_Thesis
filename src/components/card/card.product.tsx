@@ -1,5 +1,14 @@
 import React from "react";
-import { View, Text, Image, StyleSheet, Pressable } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  Pressable,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
+} from "react-native";
 import { router } from "expo-router";
 import { APP_COLOR } from "@/utils/constants";
 
@@ -11,15 +20,21 @@ interface ProductCardProps {
     product_price: number;
   };
   showFlashSale?: boolean;
-  navigationType?: "byId" | "byName";
   onPress?: () => void;
+  customStyle?: {
+    container?: ViewStyle;
+    image?: ImageStyle;
+    content?: ViewStyle;
+    name?: TextStyle;
+    price?: TextStyle;
+  };
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
   product,
   showFlashSale = false,
-  navigationType = "byId",
   onPress,
+  customStyle,
 }) => {
   const formatPrice = (price: number) => {
     return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "đ";
@@ -28,31 +43,31 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const handlePress = () => {
     if (onPress) {
       onPress();
-    } else if (navigationType === "byName") {
-      router.push({
-        pathname: "/(user)/product/name/[name]",
-        params: { name: product.product_name },
-      });
-    } else {
-      router.push({
-        pathname: "/(user)/product/[id]",
-        params: { id: product._id },
-      });
     }
+    router.push({
+      pathname: "/(user)/product/[id]",
+      params: { id: product._id },
+    });
   };
 
   return (
     <Pressable onPress={handlePress}>
-      <View style={styles.container}>
+      <View style={[styles.container, customStyle?.container]}>
         <Image
-          style={styles.image}
+          style={[styles.image, customStyle?.image]}
           source={{ uri: `${product.product_thumb}` }}
         />
-        <View style={styles.content}>
-          <Text numberOfLines={1} ellipsizeMode="tail" style={styles.name}>
+        <View style={[styles.content, customStyle?.content]}>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={[styles.name, customStyle?.name]}
+          >
             {product.product_name}
           </Text>
-          <Text style={styles.price}>{formatPrice(product.product_price)}</Text>
+          <Text style={[styles.price, customStyle?.price]}>
+            {formatPrice(product.product_price)}
+          </Text>
           {showFlashSale && (
             <View style={styles.saleContainer}>
               <View style={styles.sale}>

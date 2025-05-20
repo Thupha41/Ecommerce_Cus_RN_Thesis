@@ -29,7 +29,8 @@ const RootPage = () => {
         if (res.result) {
           //success
           setAppState({
-            user: res.result,
+            user: res.result.user,
+            cart: res.result.cart,
             access_token: await AsyncStorage.getItem("access_token"),
           });
           router.replace("/(tabs)");

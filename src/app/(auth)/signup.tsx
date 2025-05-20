@@ -23,11 +23,11 @@ const SignUpPage = () => {
   const handleSignUp = async (
     email: string,
     password: string,
-    name: string
-    //confirm_password: string
+    name: string,
+    confirm_password: string
   ) => {
     try {
-      const res = await registerAPI(email, password, name);
+      const res = await registerAPI(email, password, name, confirm_password);
       //confirm_password);
       if (res.result) {
         //await AsyncStorage.setItem("access_token", res.data.access_token);
@@ -57,14 +57,14 @@ const SignUpPage = () => {
           email: "",
           password: "",
           name: "",
-          //confirm_password: "",
+          confirm_password: "",
         }}
         onSubmit={(values) =>
           handleSignUp(
             values.email,
             values.password,
-            values.name
-            //values.confirm_password
+            values.name,
+            values.confirm_password
           )
         }
       >
@@ -105,14 +105,14 @@ const SignUpPage = () => {
               value={values.password}
               error={errors.password}
             />
-            {/* <ShareInput
+            <ShareInput
               title="Nhập lại Mật khẩu"
               secureTextEntry={true}
               onChangeText={handleChange("confirm_password")}
               onBlur={handleBlur("confirm_password")}
               value={values.confirm_password}
               error={errors.confirm_password}
-            /> */}
+            />
             <View style={{ marginVertical: 10 }}></View>
             <ShareButton
               onPress={handleSubmit}

@@ -8,7 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const data = [
   {
     key: 1,
-    name: "Top Sản Phẩm Rating 5* tuần này",
+    name: "Top Sản Phẩm Rating 5*",
     description: "Gợi ý sản phẩm được đánh giá 5*",
     refAPI: "top-rating",
   },

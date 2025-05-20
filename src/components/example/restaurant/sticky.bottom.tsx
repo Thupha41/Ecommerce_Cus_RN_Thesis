@@ -17,6 +17,7 @@ import { addProductToCartAPI } from "@/utils/api";
 import Toast from "react-native-root-toast";
 import { useRef, useState } from "react";
 import { EventRegister } from "react-native-event-listeners";
+import ProductVariationsModal from "@/components/product/product-variations-modal";
 
 interface StickyBottomProps {
   price: number;
@@ -24,6 +25,16 @@ interface StickyBottomProps {
   onChat?: () => void;
   onAddToCart?: () => void;
   onBuyWithVoucher?: () => void;
+}
+
+interface SKU {
+  _id: string;
+  sku_tier_idx: number[];
+  sku_price: number;
+  sku_stock: number;
+  sku_image: string;
+  product_id: string;
+  sku_no: string;
 }
 
 const { width: sWidth, height: sHeight } = Dimensions.get("window");
@@ -40,6 +51,14 @@ const StickyBottom = ({
   const animatedScale = useRef(new Animated.Value(0)).current;
   const animatedOpacity = useRef(new Animated.Value(0)).current;
   const [animating, setAnimating] = useState(false);
+  const [variationsModalVisible, setVariationsModalVisible] = useState(false);
+
+  // Check if product has variations
+  const hasVariations =
+    productDetail?.product_variations &&
+    productDetail.product_variations.length > 0 &&
+    productDetail?.product_skus &&
+    productDetail.product_skus.length > 0;
 
   const handleAddToCart = async () => {
     try {
@@ -63,16 +82,63 @@ const StickyBottom = ({
         return;
       }
 
-      // Start animation before API call
-      startCartAnimation();
+      // If product has variations, show the variations modal
+      if (hasVariations) {
+        setVariationsModalVisible(true);
+        return;
+      }
 
-      const productData = {
+      // Otherwise, add product directly to cart
+      await addToCart({
         product_id: productDetail._id,
         shopId: productDetail.product_shop,
         product_quantity: 1,
         name: productDetail.product_name,
         product_price: productDetail.product_price,
-      };
+      });
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      Toast.show("Có lỗi xảy ra khi thêm vào giỏ hàng", {
+        duration: Toast.durations.LONG,
+        textColor: "white",
+        backgroundColor: APP_COLOR.ORANGE,
+        opacity: 1,
+      });
+    }
+  };
+
+  const handleAddVariationToCart = async (sku: SKU, quantity: number) => {
+    if (!productDetail) return;
+
+    // Add the selected variation to cart
+    await addToCart({
+      product_id: productDetail._id,
+      shopId: productDetail.product_shop,
+      product_quantity: quantity,
+      name: productDetail.product_name,
+      product_price: sku.sku_price,
+      product_options: getVariationOptionsText(sku.sku_tier_idx),
+      sku_id: sku._id,
+    });
+  };
+
+  // Helper function to convert tier indices to readable options text
+  const getVariationOptionsText = (tierIndices: number[]): string => {
+    if (!productDetail?.product_variations) return "";
+
+    return productDetail.product_variations
+      .map((variation, index) => {
+        const optionIndex = tierIndices[index];
+        const optionValue = variation.options[optionIndex] || "";
+        return `${variation.name}: ${optionValue}`;
+      })
+      .join(", ");
+  };
+
+  const addToCart = async (productData: any) => {
+    try {
+      // Start animation before API call
+      startCartAnimation();
 
       const response = await addProductToCartAPI(productData);
 
@@ -140,14 +206,10 @@ const StickyBottom = ({
         "getCartPosition",
         (cartPosition: { x: number; y: number }) => {
           if (cartPosition) {
-            console.log("Cart position:", cartPosition);
-
             // Calculate the distance to move
             // We need to calculate from the center of the screen to the cart icon
             const endX = cartPosition.x - sWidth / 2;
             const endY = (-sHeight + cartPosition.y) * 1.47;
-
-            console.log("Animation will move to:", { endX, endY });
 
             // Create animation sequence for the flight
             Animated.parallel([
@@ -236,6 +298,19 @@ const StickyBottom = ({
           <View style={styles.flyingProductInner} />
         )}
       </Animated.View>
+
+      {/* Product Variations Modal */}
+      {hasVariations && (
+        <ProductVariationsModal
+          visible={variationsModalVisible}
+          onClose={() => setVariationsModalVisible(false)}
+          productName={productDetail?.product_name || ""}
+          productThumb={productDetail?.product_thumb || ""}
+          variations={productDetail?.product_variations || []}
+          skus={productDetail?.product_skus || []}
+          onAddToCart={handleAddVariationToCart}
+        />
+      )}
     </View>
   );
 };
