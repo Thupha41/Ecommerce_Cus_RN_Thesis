@@ -5,72 +5,116 @@ import {
   StyleSheet,
   Text,
   View,
+  ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import BannerHome from "./banner.home";
+import { useEffect, useState } from "react";
+import { getCategoryByLevelAPI } from "@/utils/api";
+import { useRouter } from "expo-router";
+import { APP_COLOR } from "@/utils/constants";
+
 const styles = StyleSheet.create({
   topList: {
     minHeight: 100,
     marginBottom: 6,
     width: "100%",
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    marginTop: 15,
+  },
+  titleText: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: APP_COLOR.ORANGE,
+  },
+  viewAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 5,
+  },
+  viewAllText: {
+    color: "#5a5a5a",
+    fontSize: 14,
+  },
 });
 
-const data1 = [
-  {
-    key: 1,
-    name: "Hot Deal",
-    source: require("@/assets/icons/flash-deals.png"),
-  },
-  {
-    key: 2,
-    name: "Quán Ngon",
-    source: require("@/assets/icons/nice-shop.png"),
-  },
-  { key: 3, name: "Tích Điểm", source: require("@/assets/icons/points.png") },
-  { key: 4, name: "Ngọt Xỉu", source: require("@/assets/icons/rice.png") },
-  {
-    key: 5,
-    name: "Quán Tiền Bối",
-    source: require("@/assets/icons/noodles.png"),
-  },
-  {
-    key: 6,
-    name: "Bún, Mì, Phở",
-    source: require("@/assets/icons/bun-pho.png"),
-  },
-  { key: 7, name: "BBQ", source: require("@/assets/icons/bbq.png") },
-  { key: 8, name: "Fast Food", source: require("@/assets/icons/fastfood.png") },
-  { key: 9, name: "Pizza", source: require("@/assets/icons/Pizza.png") },
-  { key: 10, name: "Burger", source: require("@/assets/icons/burger.png") },
-  {
-    key: 11,
-    name: "Sống Khỏe",
-    source: require("@/assets/icons/egg-cucmber.png"),
-  },
-  { key: 12, name: "Giảm 50k", source: require("@/assets/icons/moi-moi.png") },
-  {
-    key: 13,
-    name: "99k Off",
-    source: require("@/assets/icons/fried-chicken.png"),
-  },
-  {
-    key: 14,
-    name: "No Bụng",
-    source: require("@/assets/icons/korean-food.png"),
-  },
-  { key: 15, name: "Freeship", source: require("@/assets/icons/Steak.png") },
-  { key: 16, name: "Deal 0Đ", source: require("@/assets/icons/tomato.png") },
-  { key: 17, name: "Món 1Đ", source: require("@/assets/icons/elipse.png") },
-  { key: 18, name: "Ăn chiều", source: require("@/assets/icons/chowmein.png") },
-  { key: 19, name: "Combo 199k", source: require("@/assets/icons/Notif.png") },
-  { key: 20, name: "Milk Tea", source: require("@/assets/icons/salad.png") },
-];
-
 const TopListHome = () => {
+  const [categories, setCategories] = useState<ICategory[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const response = await getCategoryByLevelAPI(1);
+
+        // The axios interceptor already extracts the data
+        if (response && response.result) {
+          setCategories(
+            Array.isArray(response.result) ? response.result : [response.result]
+          );
+        }
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch categories:", err);
+        setError("Không thể tải danh mục");
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  const handleViewAllPress = () => {
+    router.push("/(user)/category/all-categories");
+  };
+
   // https://stackoverflow.com/questions/45939823/react-native-horizontal-flatlist-with-multiple-rows
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>{error}</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.topList}>
       <BannerHome />
+
+      <View style={styles.headerContainer}>
+        <Text style={styles.titleText}>Danh mục</Text>
+        <TouchableOpacity
+          style={styles.viewAllButton}
+          onPress={handleViewAllPress}
+        >
+          <Text style={styles.viewAllText}>Xem tất cả</Text>
+          <MaterialIcons name="navigate-next" size={20} color="grey" />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -80,11 +124,12 @@ const TopListHome = () => {
       >
         <FlatList
           contentContainerStyle={{ alignSelf: "flex-start" }}
-          numColumns={Math.ceil(data1.length / 2)}
+          numColumns={Math.ceil(categories.length / 2)}
           showsVerticalScrollIndicator={false}
           showsHorizontalScrollIndicator={false}
-          data={data1}
-          renderItem={({ item, index }) => {
+          data={categories}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => {
             return (
               <View
                 style={{
@@ -93,8 +138,14 @@ const TopListHome = () => {
                   alignItems: "center",
                 }}
               >
-                <Image source={item.source} style={{ height: 35, width: 35 }} />
-                <Text style={{ textAlign: "center" }}>{item.name}</Text>
+                <Image
+                  source={{ uri: item.image }}
+                  style={{ height: 35, width: 35 }}
+                  defaultSource={require("@/assets/icons/flash-deals.png")}
+                />
+                <Text style={{ textAlign: "center" }}>
+                  {item.category_name}
+                </Text>
               </View>
             );
           }}

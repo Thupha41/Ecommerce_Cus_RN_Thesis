@@ -113,13 +113,7 @@ const CollectionHome = (props: IProps) => {
             data={products}
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => {
-              return (
-                <ProductCard
-                  product={item}
-                  showFlashSale={true}
-                  navigationType="byId"
-                />
-              );
+              return <ProductCard product={item} showFlashSale={true} />;
             }}
           />
         </View>

@@ -23,7 +23,6 @@ const styles = StyleSheet.create({
 
 const LoginPage = () => {
   const [loading, setLoading] = useState<boolean>(false);
-  const { setAppState } = useCurrentApp();
 
   const handleLogin = async (email: string, password: string) => {
     try {
@@ -33,7 +32,7 @@ const LoginPage = () => {
       console.log(res.result);
       if (res.result) {
         await AsyncStorage.setItem("access_token", res.result.access_token);
-        setAppState(res.result);
+        // setAppState(res.result);
         router.replace("/(tabs)");
       } else {
         const m = Array.isArray(res.message) ? res.message[0] : res.message;

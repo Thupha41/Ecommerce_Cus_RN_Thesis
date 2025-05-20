@@ -58,7 +58,7 @@ const WelcomePage = () => {
         <View style={styles.container}>
           <View style={styles.welcomeText}>
             <Text style={styles.heading}>Welcome to</Text>
-            <Text style={styles.body}>ZadaMall</Text>
+            <Text style={styles.body}>EzShop</Text>
             <Text style={styles.footer}>Nền tảng thương mại điện tử</Text>
             <Text style={styles.footer}>hàng đầu Việt Nam</Text>
           </View>

@@ -1,10 +1,9 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
-  Dimensions,
   TouchableOpacity,
 } from "react-native";
 import ProductCard from "@/components/card/card.product";
@@ -12,18 +11,22 @@ import { router } from "expo-router";
 
 interface ProductResultsProps {
   products: Array<{
-    product_id: string;
-    product_name: string;
+    database_id?: string;
+    name: string;
     product_thumb?: string;
-    product_price?: number;
-    return_policies_text?: string;
-    specification_text?: string;
+    price?: number;
+    [key: string]: any; // Để có thể nhận bất kỳ thuộc tính nào khác
   }>;
 }
 
 const ProductResults: React.FC<ProductResultsProps> = ({ products }) => {
+  useEffect(() => {
+    // Chỉ log khi products thay đổi
+    console.log("Products changed, valid count:", products?.length || 0);
+    console.log("Products sample:", products?.slice(0, 2) || []);
+  }, [products]);
+
   if (!products || products.length === 0) {
-    console.log("No products or empty array");
     return null;
   }
 
@@ -32,12 +35,8 @@ const ProductResults: React.FC<ProductResultsProps> = ({ products }) => {
     (item) => item !== null && item !== undefined
   );
 
-  console.log("Valid products count:", validProducts.length);
-  console.log("Products sample:", validProducts.slice(0, 2));
-
   // Trường hợp không có sản phẩm hợp lệ
   if (validProducts.length === 0) {
-    console.log("No valid products after filtering");
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>Không có sản phẩm phù hợp</Text>
@@ -48,37 +47,28 @@ const ProductResults: React.FC<ProductResultsProps> = ({ products }) => {
   const renderProductItem = ({ item }: { item: any }) => {
     // Kiểm tra nếu item là null/undefined
     if (!item) {
-      console.log("Skipping null/undefined item");
       return null;
     }
 
-    console.log("Rendering item:", item);
-
-    // Đảm bảo product_name tồn tại
-    if (!item.product_name) {
-      console.log("Item missing product_name:", item);
+    // Đảm bảo name tồn tại
+    if (!item.name) {
       return null;
     }
-
-    // Đảm bảo product_id là string
-    const productId = item.product_id ? item.product_id.toString() : "";
 
     // Create a formatted product object compatible with ProductCard
     const productData = {
-      _id: productId,
-      product_name: item.product_name,
+      _id: item.database_id,
+      product_name: item.name,
       product_thumb: item.product_thumb,
-      product_price: item.product_price || 0,
+      product_price: item.price || 0,
     };
 
-    // Sử dụng navigationType=byName để chuyển đến trang [name].tsx
     if (!item.product_thumb) {
       // Nếu không có thumbnail, sử dụng placeholder
       const handlePress = () => {
-        console.log("Navigating to product:", item.product_name);
         router.push({
-          pathname: "/(user)/product/name/[name]",
-          params: { name: item.product_name },
+          pathname: "/(user)/product/[id]",
+          params: { id: item.database_id },
         });
       };
 
@@ -91,14 +81,11 @@ const ProductResults: React.FC<ProductResultsProps> = ({ products }) => {
           <View style={styles.placeholderImage} />
           <View style={styles.content}>
             <Text numberOfLines={1} ellipsizeMode="tail" style={styles.name}>
-              {item.product_name}
+              {item.name}
             </Text>
-            {item.product_price && (
+            {item.price && (
               <Text style={styles.price}>
-                {item.product_price
-                  .toString()
-                  .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                đ
+                {item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}đ
               </Text>
             )}
           </View>
@@ -106,14 +93,7 @@ const ProductResults: React.FC<ProductResultsProps> = ({ products }) => {
       );
     }
 
-    // Sử dụng ProductCard với navigationType=byName
-    return (
-      <ProductCard
-        product={productData}
-        showFlashSale={false}
-        navigationType="byName"
-      />
-    );
+    return <ProductCard product={productData} showFlashSale={false} />;
   };
 
   return (
@@ -178,4 +158,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProductResults;
+// Sử dụng React.memo để ngăn re-render khi props không thay đổi
+export default React.memo(ProductResults);

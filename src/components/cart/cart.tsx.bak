@@ -1,15 +1,15 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
+  FlatList,
   Image,
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
   Pressable,
-  Animated,
-  PanResponder,
+  Modal,
 } from "react-native";
 import { useCurrentApp } from "@/context/app.context";
 import {
@@ -17,14 +17,15 @@ import {
   updateCartAPI,
   getShopByIDAPI,
   getProductByIdAPI,
-  deleteCartItemBySkuIdAPI,
+  getDeliveryDefaultByUserAPI,
+  getAllDeliveriesAPI,
 } from "@/utils/api";
 import { APP_COLOR } from "@/utils/constants";
 import {
   Feather,
   Ionicons,
   MaterialIcons,
-  FontAwesome,
+  AntDesign,
 } from "@expo/vector-icons";
 import { router } from "expo-router";
 import Toast from "react-native-root-toast";
@@ -56,7 +57,6 @@ interface Shop {
   freeShipping?: boolean;
   popularityText?: string;
   shopData?: IShop | null;
-  selectedProducts?: Record<string, boolean>;
 }
 
 const CartScreen = () => {
@@ -68,21 +68,23 @@ const CartScreen = () => {
   const [processingItems, setProcessingItems] = useState<string[]>([]);
   const [allSelected, setAllSelected] = useState(true);
   const [loadingShops, setLoadingShops] = useState<Record<string, boolean>>({});
+  // State for default delivery address
+  const [address, setAddress] = useState<IDeliveryAddress | null>(null);
+  // State for address selection modal
+  const [addressModalVisible, setAddressModalVisible] = useState(false);
+  const [addresses, setAddresses] = useState<IDeliveryAddress[]>([]);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
+
+  // State for variations modal
   const [variationsModalVisible, setVariationsModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<CartProduct | null>(
     null
   );
 
-  // New state for edit mode
-  const [editMode, setEditMode] = useState<Record<string, boolean>>({});
-  const [deletingItems, setDeletingItems] = useState<string[]>([]);
-
-  // Store swipe animations in a ref to persist between renders
-  const swipeAnimations = useRef<Record<string, Animated.Value>>({});
-
   useEffect(() => {
     if (appState?.user?._id) {
       fetchCartItems(appState.user._id);
+      fetchDefaultAddress();
     }
   }, [appState?.user?._id]);
 
@@ -120,15 +122,6 @@ const CartScreen = () => {
         let index = 0;
         shopMap.forEach((products, shopId) => {
           const shopType = index % 3;
-          // Initialize selectedProducts object with all products selected
-          const selectedProducts: Record<string, boolean> = {};
-          products.forEach((product) => {
-            const productKey = product.sku_id
-              ? `${product.product_id}-${product.sku_id}`
-              : product.product_id;
-            selectedProducts[productKey] = true;
-          });
-
           shopArray.push({
             shopId,
             shopName: getShopName(shopId),
@@ -137,7 +130,6 @@ const CartScreen = () => {
             isMall: shopType === 0 || shopType === 1,
             isStarShop: shopType === 2,
             freeShipping: true,
-            selectedProducts,
           });
           index++;
         });
@@ -160,6 +152,52 @@ const CartScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fetch default delivery address
+  const fetchDefaultAddress = async () => {
+    try {
+      const response = await getDeliveryDefaultByUserAPI();
+      if (response.result) {
+        setAddress(response.result);
+      }
+    } catch (error) {
+      console.error("Error fetching default address:", error);
+    }
+  };
+
+  // Fetch all delivery addresses
+  const fetchAllAddresses = async () => {
+    if (!appState?.user?._id) return;
+
+    try {
+      setLoadingAddresses(true);
+      const response = await getAllDeliveriesAPI();
+      if (response.result) {
+        setAddresses(response.result);
+      }
+    } catch (error) {
+      console.error("Error fetching addresses:", error);
+      Toast.show("Không thể tải danh sách địa chỉ", {
+        duration: Toast.durations.SHORT,
+        textColor: "white",
+        backgroundColor: APP_COLOR.ORANGE,
+      });
+    } finally {
+      setLoadingAddresses(false);
+    }
+  };
+
+  // Handle opening address modal
+  const handleOpenAddressModal = () => {
+    fetchAllAddresses();
+    setAddressModalVisible(true);
+  };
+
+  // Handle selecting an address
+  const handleSelectAddress = (selectedAddress: IDeliveryAddress) => {
+    setAddress(selectedAddress);
+    setAddressModalVisible(false);
   };
 
   // Handle quantity updates with the new API
@@ -366,126 +404,38 @@ const CartScreen = () => {
     let items = 0;
 
     shopList.forEach((shop) => {
-      shop.products.forEach((product) => {
-        const productKey = product.sku_id
-          ? `${product.product_id}-${product.sku_id}`
-          : product.product_id;
-
-        if (shop.selectedProducts && shop.selectedProducts[productKey]) {
+      if (shop.isSelected) {
+        shop.products.forEach((product) => {
           price += product.product_price * product.product_quantity;
           items += product.product_quantity;
-        }
-      });
+        });
+      }
     });
 
     setTotalPrice(price);
     setTotalItems(items);
-
-    // Check if all products in all shops are selected
-    const allProductsSelected = shopList.every((shop) =>
-      shop.products.every((product) => {
-        const productKey = product.sku_id
-          ? `${product.product_id}-${product.sku_id}`
-          : product.product_id;
-        return shop.selectedProducts?.[productKey];
-      })
-    );
-
-    setAllSelected(allProductsSelected);
-
-    // Update shop selection status based on its products
-    const updatedShops = shopList.map((shop) => {
-      const allShopProductsSelected = shop.products.every((product) => {
-        const productKey = product.sku_id
-          ? `${product.product_id}-${product.sku_id}`
-          : product.product_id;
-        return shop.selectedProducts?.[productKey];
-      });
-
-      return {
-        ...shop,
-        isSelected: allShopProductsSelected,
-      };
-    });
-
-    if (JSON.stringify(updatedShops) !== JSON.stringify(shopList)) {
-      setShops(updatedShops);
-    }
+    setAllSelected(shopList.every((shop) => shop.isSelected));
   };
 
   const toggleShopSelection = (shopId: string) => {
-    const updatedShops = shops.map((shop) => {
-      if (shop.shopId === shopId) {
-        const newSelectedState = !shop.isSelected;
-        const updatedSelectedProducts = { ...shop.selectedProducts };
-
-        // Update all products in the shop to match the shop's selection state
-        shop.products.forEach((product) => {
-          const productKey = product.sku_id
-            ? `${product.product_id}-${product.sku_id}`
-            : product.product_id;
-          updatedSelectedProducts[productKey] = newSelectedState;
-        });
-
-        return {
-          ...shop,
-          isSelected: newSelectedState,
-          selectedProducts: updatedSelectedProducts,
-        };
-      }
-      return shop;
-    });
-
+    const updatedShops = shops.map((shop) =>
+      shop.shopId === shopId ? { ...shop, isSelected: !shop.isSelected } : shop
+    );
     setShops(updatedShops);
     calculateTotals(updatedShops);
   };
 
-  const toggleProductSelection = (
-    shopId: string,
-    productId: string,
-    skuId?: string
-  ) => {
-    const productKey = skuId ? `${productId}-${skuId}` : productId;
-
-    const updatedShops = shops.map((shop) => {
-      if (shop.shopId === shopId) {
-        const updatedSelectedProducts = { ...shop.selectedProducts };
-        // Toggle this specific product's selection
-        updatedSelectedProducts[productKey] =
-          !updatedSelectedProducts[productKey];
-
-        return {
-          ...shop,
-          selectedProducts: updatedSelectedProducts,
-        };
-      }
-      return shop;
-    });
-
-    setShops(updatedShops);
-    calculateTotals(updatedShops);
+  const toggleProductSelection = (shopId: string, productId: string) => {
+    // In this UI, we select/deselect the entire shop
+    toggleShopSelection(shopId);
   };
 
   const toggleAllSelection = () => {
     const newAllSelected = !allSelected;
-    const updatedShops = shops.map((shop) => {
-      const updatedSelectedProducts = { ...shop.selectedProducts };
-
-      // Update all products to the new selection state
-      shop.products.forEach((product) => {
-        const productKey = product.sku_id
-          ? `${product.product_id}-${product.sku_id}`
-          : product.product_id;
-        updatedSelectedProducts[productKey] = newAllSelected;
-      });
-
-      return {
-        ...shop,
-        isSelected: newAllSelected,
-        selectedProducts: updatedSelectedProducts,
-      };
-    });
-
+    const updatedShops = shops.map((shop) => ({
+      ...shop,
+      isSelected: newAllSelected,
+    }));
     setShops(updatedShops);
     calculateTotals(updatedShops);
     setAllSelected(newAllSelected);
@@ -500,62 +450,6 @@ const CartScreen = () => {
       pathname: `/(user)/shop/[id]`,
       params: { id: shopId },
     });
-  };
-
-  // Handle checkout
-  const handleCheckout = () => {
-    // Collect selected products for checkout
-    if (totalItems === 0) return;
-
-    try {
-      // Prepare data structure for the checkout API
-      const cartId = appState?.cart?._id || "";
-      const shopOrderIds: any[] = [];
-
-      shops.forEach((shop) => {
-        // Skip shops with no selected products
-        const selectedProducts = shop.products.filter((product) => {
-          const productKey = product.sku_id
-            ? `${product.product_id}-${product.sku_id}`
-            : product.product_id;
-          return shop.selectedProducts?.[productKey];
-        });
-
-        if (selectedProducts.length > 0) {
-          const shopOrder = {
-            shopId: shop.shopId,
-            shop_discounts: [],
-            item_products: selectedProducts.map((product) => ({
-              productId: product.product_id,
-              price: product.product_price,
-              quantity: product.product_quantity,
-              sku_id: product.sku_id || undefined,
-            })),
-          };
-
-          shopOrderIds.push(shopOrder);
-        }
-      });
-
-      // Create the checkout request object
-      const checkoutRequest = {
-        cartId,
-        shop_order_ids: shopOrderIds,
-      };
-
-      // Navigate to checkout screen with the items data
-      router.push({
-        pathname: "/(user)/checkout/checkout-review",
-        params: { items: encodeURIComponent(JSON.stringify(checkoutRequest)) },
-      });
-    } catch (error) {
-      console.error("Error preparing checkout data:", error);
-      Toast.show("Có lỗi xảy ra khi chuẩn bị thanh toán", {
-        duration: Toast.durations.SHORT,
-        textColor: "white",
-        backgroundColor: APP_COLOR.ORANGE,
-      });
-    }
   };
 
   // Open product variations modal when user clicks on options
@@ -593,321 +487,154 @@ const CartScreen = () => {
     setVariationsModalVisible(true);
   };
 
-  // Create pan responder factory function
-  const createPanResponder = (productKey: string) => {
-    return PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to horizontal movements
-        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy * 3);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        // Only allow left swipe (negative dx)
-        if (gestureState.dx < 0) {
-          // Limit the swipe to -80 (width of delete button)
-          swipeAnimations.current[productKey].setValue(
-            Math.max(gestureState.dx, -80)
-          );
-        } else {
-          // For right swipe, smoothly return to 0
-          swipeAnimations.current[productKey].setValue(gestureState.dx / 3);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        // If swiped left enough, snap to show delete button
-        if (gestureState.dx < -40) {
-          Animated.spring(swipeAnimations.current[productKey], {
-            toValue: -80,
-            useNativeDriver: true,
-            friction: 8,
-          }).start();
-        } else {
-          // Otherwise snap back to original position
-          Animated.spring(swipeAnimations.current[productKey], {
-            toValue: 0,
-            useNativeDriver: true,
-            friction: 8,
-          }).start();
-        }
-      },
-    });
+  // Format complete address
+  const getFormattedAddress = (): string => {
+    if (!address) return "Chưa có địa chỉ giao hàng";
+
+    const { shipping_address } = address;
+    return `${shipping_address.street}, ${shipping_address.ward}, ${shipping_address.district}, ${shipping_address.province_city}`;
   };
 
-  // Store pan responders in a ref
-  const panResponders = useRef<Record<string, any>>({});
+  // Render an address item in the modal
+  const renderAddressItem = (item: IDeliveryAddress) => {
+    const isSelected = address?._id === item._id;
+    const formattedAddress = `${item.shipping_address.street}, ${item.shipping_address.ward}, ${item.shipping_address.district}, ${item.shipping_address.province_city}`;
+    const phoneNumber = item.personal_detail.phone.replace(
+      /(\d{4})(\d{3})(\d{3})/,
+      "($+84)$1***$3"
+    );
 
-  // Handle delete cart item
-  const handleDeleteCartItem = async (product: CartProduct) => {
-    try {
-      const productId = product.product_id;
-      const skuId = product.sku_id;
-
-      if (!productId) return;
-
-      setDeletingItems((prev) => [...prev, productId]);
-
-      // Call the appropriate API based on whether we have a SKU ID
-      if (skuId) {
-        await deleteCartItemBySkuIdAPI(productId, skuId);
-      } else {
-        // Use the regular delete API for products without variations
-        await deleteCartItemBySkuIdAPI(productId, "");
-      }
-
-      // Update the local state to remove the deleted product
-      const updatedShops = shops
-        .map((shop) => {
-          if (shop.shopId === product.shopId) {
-            const updatedProducts = shop.products.filter((p) => {
-              if (skuId) {
-                return !(p.product_id === productId && p.sku_id === skuId);
-              }
-              return p.product_id !== productId;
-            });
-
-            return {
-              ...shop,
-              products: updatedProducts,
-            };
-          }
-          return shop;
-        })
-        .filter((shop) => shop.products.length > 0); // Remove empty shops
-
-      setShops(updatedShops);
-      calculateTotals(updatedShops);
-
-      // Update cart count in the header
-      EventRegister.emit("updateCartCount");
-
-      Toast.show("Đã xóa sản phẩm khỏi giỏ hàng", {
-        duration: Toast.durations.SHORT,
-        textColor: "white",
-        backgroundColor: APP_COLOR.ORANGE,
-      });
-    } catch (error) {
-      console.error("Error deleting cart item:", error);
-      Toast.show("Không thể xóa sản phẩm", {
-        duration: Toast.durations.SHORT,
-        textColor: "white",
-        backgroundColor: APP_COLOR.ORANGE,
-      });
-    } finally {
-      setDeletingItems((prev) =>
-        prev.filter((id) => id !== product.product_id)
-      );
-    }
+    return (
+      <TouchableOpacity
+        style={[styles.addressItem, isSelected && styles.selectedAddressItem]}
+        onPress={() => handleSelectAddress(item)}
+      >
+        <View style={styles.addressRadio}>
+          {isSelected ? <View style={styles.radioSelected} /> : null}
+        </View>
+        <View style={styles.addressContent}>
+          <Text style={styles.addressName}>{item.personal_detail.name}</Text>
+          <Text style={styles.addressPhone}>{phoneNumber}</Text>
+          <Text style={styles.addressText} numberOfLines={2}>
+            {formattedAddress}
+          </Text>
+          {item.is_default && (
+            <View style={styles.defaultBadge}>
+              <Text style={styles.defaultText}>Mặc định</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
   };
 
-  // Toggle edit mode for a specific shop
-  const toggleEditMode = (shopId: string) => {
-    setEditMode((prev) => {
-      const newEditMode = { ...prev };
-      const isCurrentlyInEditMode = prev[shopId];
-
-      // Toggle the edit mode for this shop
-      newEditMode[shopId] = !isCurrentlyInEditMode;
-
-      // If we're entering edit mode, reset all animations for this shop's products
-      // If we're exiting edit mode, animate all items back to their original position
-      shops.forEach((shop) => {
-        if (shop.shopId === shopId) {
-          shop.products.forEach((product) => {
-            const itemKey = product.sku_id
-              ? `${product.product_id}-${product.sku_id}`
-              : product.product_id;
-
-            if (swipeAnimations.current[itemKey]) {
-              if (isCurrentlyInEditMode) {
-                // Exiting edit mode, animate back
-                Animated.spring(swipeAnimations.current[itemKey], {
-                  toValue: 0,
-                  useNativeDriver: true,
-                  friction: 8,
-                }).start();
-              } else {
-                // Entering edit mode, animate to show delete
-                Animated.spring(swipeAnimations.current[itemKey], {
-                  toValue: -80,
-                  useNativeDriver: true,
-                  friction: 8,
-                }).start();
-              }
-            }
-          });
-        }
-      });
-
-      return newEditMode;
-    });
-  };
-
-  // Modified renderProductItem to include swipe-to-delete and edit mode delete button
   const renderProductItem = (
     product: CartProduct,
     shopId: string,
-    shop: Shop
+    isShopSelected: boolean
   ) => {
     // Generate a unique key using both product_id and sku_id if available
     const itemKey = product.sku_id
       ? `${product.product_id}-${product.sku_id}`
       : product.product_id;
 
-    // Check if this specific product is selected
-    const isProductSelected = shop.selectedProducts?.[itemKey] ?? false;
-
-    // Check if this shop is in edit mode
-    const isInEditMode = editMode[shopId] || false;
-
-    // Initialize animation value for this product if it doesn't exist
-    if (!swipeAnimations.current[itemKey]) {
-      swipeAnimations.current[itemKey] = new Animated.Value(0);
-    }
-
-    // Initialize pan responder for this product if it doesn't exist
-    if (!panResponders.current[itemKey]) {
-      panResponders.current[itemKey] = createPanResponder(itemKey);
-    }
-
-    const translateX = swipeAnimations.current[itemKey];
-    const panHandlers = panResponders.current[itemKey].panHandlers;
-
-    const isDeleting = deletingItems.includes(product.product_id);
-
     return (
-      <View style={styles.productItemContainer} key={itemKey}>
-        {/* Swipeable container */}
-        <Animated.View
-          style={[
-            styles.productSwipeableContainer,
-            { transform: [{ translateX }] },
-          ]}
-          {...(!isInEditMode ? panHandlers : {})}
-        >
-          <View style={styles.productContainer}>
-            <TouchableOpacity
-              style={styles.checkboxContainer}
-              onPress={() =>
-                toggleProductSelection(
-                  shopId,
-                  product.product_id,
-                  product.sku_id
-                )
-              }
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  isProductSelected && styles.checkboxSelected,
-                ]}
-              >
-                {isProductSelected && (
-                  <Ionicons name="checkmark" size={18} color="white" />
-                )}
-              </View>
-            </TouchableOpacity>
-            <Pressable
-              onPress={() =>
-                router.navigate({
-                  pathname: "/product/[id]",
-                  params: { id: product.product_id },
-                })
-              }
-            >
-              <Image
-                source={{
-                  uri: `${product.product_thumb}`,
-                }}
-                style={styles.productImage}
-              />
-            </Pressable>
-
-            <View style={styles.productDetails}>
-              <Pressable
-                onPress={() =>
-                  router.navigate({
-                    pathname: "/product/[id]",
-                    params: { id: product.product_id },
-                  })
-                }
-              >
-                <Text style={styles.productName} numberOfLines={2}>
-                  {product.name}
-                </Text>
-              </Pressable>
-
-              {product.product_options && (
-                <TouchableOpacity
-                  style={styles.optionContainer}
-                  onPress={() => handleOpenOptionsModal(product)}
-                >
-                  <Text style={styles.optionText}>
-                    {product.product_options}
-                  </Text>
-                  <MaterialIcons
-                    name="keyboard-arrow-down"
-                    size={16}
-                    color="#888"
-                  />
-                </TouchableOpacity>
-              )}
-
-              <View style={styles.priceContainer}>
-                <Text style={styles.productPrice}>
-                  {formatPrice(product.product_price)}
-                </Text>
-              </View>
-
-              <View style={styles.quantityContainer}>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() =>
-                    handleUpdateQuantity(product, product.product_quantity - 1)
-                  }
-                  disabled={processingItems.includes(product.product_id)}
-                >
-                  <Text style={styles.quantityButtonText}>−</Text>
-                </TouchableOpacity>
-
-                <View style={styles.quantityTextContainer}>
-                  <Text style={styles.quantityText}>
-                    {product.product_quantity}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() =>
-                    handleUpdateQuantity(product, product.product_quantity + 1)
-                  }
-                  disabled={processingItems.includes(product.product_id)}
-                >
-                  <Text style={styles.quantityButtonText}>+</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* Delete button that shows when swiped or in edit mode */}
+      <View style={styles.productContainer} key={itemKey}>
         <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteCartItem(product)}
-          disabled={isDeleting}
+          style={styles.checkboxContainer}
+          onPress={() => toggleProductSelection(shopId, product.product_id)}
         >
-          {isDeleting ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <FontAwesome name="trash" size={20} color="white" />
-          )}
+          <View
+            style={[styles.checkbox, isShopSelected && styles.checkboxSelected]}
+          >
+            {isShopSelected && (
+              <Ionicons name="checkmark" size={18} color="white" />
+            )}
+          </View>
         </TouchableOpacity>
+        <Pressable
+          onPress={() =>
+            router.navigate({
+              pathname: "/product/[id]",
+              params: { id: product.product_id },
+            })
+          }
+        >
+          <Image
+            source={{
+              uri: `${product.product_thumb}`,
+            }}
+            style={styles.productImage}
+          />
+        </Pressable>
+
+        <View style={styles.productDetails}>
+          <Pressable
+            onPress={() =>
+              router.navigate({
+                pathname: "/product/[id]",
+                params: { id: product.product_id },
+              })
+            }
+          >
+            <Text style={styles.productName} numberOfLines={2}>
+              {product.name}
+            </Text>
+          </Pressable>
+
+          {product.product_options && (
+            <TouchableOpacity
+              style={styles.optionContainer}
+              onPress={() => handleOpenOptionsModal(product)}
+            >
+              <Text style={styles.optionText}>{product.product_options}</Text>
+              <MaterialIcons
+                name="keyboard-arrow-down"
+                size={16}
+                color="#888"
+              />
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.priceContainer}>
+            <Text style={styles.productPrice}>
+              {formatPrice(product.product_price)}
+            </Text>
+          </View>
+
+          <View style={styles.quantityContainer}>
+            <TouchableOpacity
+              style={styles.quantityButton}
+              onPress={() =>
+                handleUpdateQuantity(product, product.product_quantity - 1)
+              }
+              disabled={processingItems.includes(product.product_id)}
+            >
+              <Text style={styles.quantityButtonText}>−</Text>
+            </TouchableOpacity>
+
+            <View style={styles.quantityTextContainer}>
+              <Text style={styles.quantityText}>
+                {product.product_quantity}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.quantityButton}
+              onPress={() =>
+                handleUpdateQuantity(product, product.product_quantity + 1)
+              }
+              disabled={processingItems.includes(product.product_id)}
+            >
+              <Text style={styles.quantityButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     );
   };
 
   const renderShopItem = (shop: Shop) => {
-    // Check if this shop is in edit mode
-    const isInEditMode = editMode[shop.shopId] || false;
-
     return (
       <View style={styles.shopContainer} key={shop.shopId}>
         <View style={styles.shopHeader}>
@@ -945,15 +672,13 @@ const CartScreen = () => {
             <MaterialIcons name="keyboard-arrow-right" size={20} color="#888" />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => toggleEditMode(shop.shopId)}>
-            <Text style={styles.editText}>
-              {isInEditMode ? "Xong" : "Chỉnh sửa"}
-            </Text>
+          <TouchableOpacity>
+            <Text style={styles.editText}>Chỉnh sửa</Text>
           </TouchableOpacity>
         </View>
 
         {shop.products.map((product) =>
-          renderProductItem(product, shop.shopId, shop)
+          renderProductItem(product, shop.shopId, shop.isSelected)
         )}
 
         {shop.popularityText && (
@@ -961,53 +686,6 @@ const CartScreen = () => {
         )}
       </View>
     );
-  };
-
-  // Check if all shops are in edit mode to determine header button text
-  const isAnyShopInEditMode = () => {
-    return Object.values(editMode).some((value) => value);
-  };
-
-  // Toggle edit mode for all shops
-  const toggleAllEditMode = () => {
-    setEditMode((prev) => {
-      const isAnyShopCurrentlyInEditMode = Object.values(prev).some(
-        (value) => value
-      );
-      const newEditMode: Record<string, boolean> = {};
-
-      // Set all shops to the new edit mode state
-      shops.forEach((shop) => {
-        newEditMode[shop.shopId] = !isAnyShopCurrentlyInEditMode;
-
-        // Animate all items based on the new edit mode
-        shop.products.forEach((product) => {
-          const itemKey = product.sku_id
-            ? `${product.product_id}-${product.sku_id}`
-            : product.product_id;
-
-          if (swipeAnimations.current[itemKey]) {
-            if (isAnyShopCurrentlyInEditMode) {
-              // Exiting edit mode, animate back
-              Animated.spring(swipeAnimations.current[itemKey], {
-                toValue: 0,
-                useNativeDriver: true,
-                friction: 8,
-              }).start();
-            } else {
-              // Entering edit mode, animate to show delete
-              Animated.spring(swipeAnimations.current[itemKey], {
-                toValue: -80,
-                useNativeDriver: true,
-                friction: 8,
-              }).start();
-            }
-          }
-        });
-      });
-
-      return newEditMode;
-    });
   };
 
   // Render ProductVariationsModal if a product is selected
@@ -1038,15 +716,25 @@ const CartScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Giỏ hàng ({totalItems})</Text>
-        <View style={styles.headerRightPlaceholder} />
+        <TouchableOpacity>
+          <Text style={styles.editText}>Chỉnh sửa</Text>
+        </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        style={styles.locationBar}
+        onPress={handleOpenAddressModal}
+      >
+        <Ionicons name="location-outline" size={18} color="#666" />
+        <Text style={styles.locationText} numberOfLines={1}>
+          {getFormattedAddress()}
+        </Text>
+        <MaterialIcons name="keyboard-arrow-right" size={20} color="#888" />
+      </TouchableOpacity>
 
       <ScrollView
         style={styles.scrollContainer}
@@ -1096,11 +784,49 @@ const CartScreen = () => {
             totalItems === 0 && styles.disabledButton,
           ]}
           disabled={totalItems === 0}
-          onPress={handleCheckout}
         >
           <Text style={styles.checkoutText}>Thanh toán ({totalItems})</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Address Selection Modal */}
+      <Modal
+        visible={addressModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setAddressModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chọn địa chỉ</Text>
+              <TouchableOpacity onPress={() => setAddressModalVisible(false)}>
+                <AntDesign name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingAddresses ? (
+              <View style={styles.loadingAddresses}>
+                <ActivityIndicator size="large" color={APP_COLOR.ORANGE} />
+                <Text style={styles.loadingText}>Đang tải địa chỉ...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={addresses}
+                renderItem={({ item }) => renderAddressItem(item)}
+                keyExtractor={(item) => item._id}
+                contentContainerStyle={styles.addressList}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+
+                        <TouchableOpacity              style={styles.addAddressButton}              onPress={() => {                setAddressModalVisible(false);                // Navigate to add address screen                router.push("/");              }}            >
+              <AntDesign name="plus" size={20} color={APP_COLOR.ORANGE} />
+              <Text style={styles.addAddressText}>Thêm địa chỉ mới</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Variations Modal */}
       {selectedProduct &&
@@ -1139,19 +865,25 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     backgroundColor: "white",
   },
-  backButton: {
-    width: 24,
-  },
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    textAlign: "center",
+  },
+  locationBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  locationText: {
     flex: 1,
+    marginLeft: 5,
+    fontSize: 14,
+    color: "#333",
   },
-  headerRightPlaceholder: {
-    width: 24,
-  },
-
   scrollContainer: {
     flex: 1,
   },
@@ -1454,38 +1186,108 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: "#ccc",
   },
-
-  productItemContainer: {
-    position: "relative",
-    flexDirection: "row",
-    overflow: "hidden",
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
-  productSwipeableContainer: {
-    width: "100%",
+  modalContent: {
     backgroundColor: "white",
-    zIndex: 1,
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+    paddingBottom: 20,
+    maxHeight: "80%",
   },
-  deleteButton: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 80,
-    backgroundColor: "#ff4d4f",
-    justifyContent: "center",
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
-  editModeDeleteButton: {
-    backgroundColor: "#ff4d4f",
-    paddingHorizontal: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 4,
-  },
-  deleteButtonText: {
-    color: "white",
+  modalTitle: {
+    fontSize: 18,
     fontWeight: "bold",
+  },
+  addressList: {
+    paddingHorizontal: 15,
+  },
+  addressItem: {
+    flexDirection: "row",
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  selectedAddressItem: {
+    backgroundColor: "#fff9f6",
+  },
+  addressRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: APP_COLOR.ORANGE,
+    marginRight: 15,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  radioSelected: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: APP_COLOR.ORANGE,
+  },
+  addressContent: {
+    flex: 1,
+  },
+  addressName: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  addressPhone: {
     fontSize: 14,
+    color: "#666",
+    marginBottom: 5,
+  },
+  addressText: {
+    fontSize: 14,
+    color: "#333",
+    lineHeight: 20,
+  },
+  defaultBadge: {
+    backgroundColor: "#fff0e6",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: APP_COLOR.ORANGE,
+    alignSelf: "flex-start",
+    marginTop: 8,
+  },
+  defaultText: {
+    color: APP_COLOR.ORANGE,
+    fontSize: 12,
+  },
+  addAddressButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 15,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+    marginTop: 10,
+  },
+  addAddressText: {
+    color: APP_COLOR.ORANGE,
+    fontSize: 16,
+    marginLeft: 8,
+    fontWeight: "500",
+  },
+  loadingAddresses: {
+    padding: 30,
+    alignItems: "center",
   },
 });
 
